@@ -13,9 +13,39 @@ There are essentially 3 phases to this project, although the first 2 phases are 
 
 ## Software Requirements and Packages Used for this Program:
 
-To implement the Python selenium webcrawler program, we need to have the following software: Python 3 (at least version >= 3.7), Anaconda (if you wish to use Jupyter notebooks, especially for the 3rd phase/data analysis), and various packages for Python 3. 
+To implement the Python selenium webcrawler program, we need to have the following software: Python 3 (at least version >= 3.7), Anaconda (if you wish to use Jupyter notebooks, especially for the 3rd phase/data analysis), various packages for Python 3 (as detailed in the sections below), and a command-line interface such as bash or Windows Powershell. While optional, I would also recommend using a code editor such as VS Code.
 
-To do this, we first need to install required packages
+When actually running any portion or phase of this project's scripts, I would highly recommend using a Python virtual environment. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
+
+### How do we install Python packages?
+
+We do *not* need to manually install Python packages. Instead, we can programmatically install Python packages. To do this--assuming we are using a Python virtual environment for the project--we need to install the packages via a command-line terminal by referencing the requirements.txt file that has been added to the parent CraigslistWebScraper directory.
+
+Namely, we need to take the following 3 steps:
+
+1.) Change to the parent CraigslistWebScraper directory (if needed).
+2.) Activate the Python virtual environment.
+-- For example, in Windows Powershell--say the virtualenvironment was called 'venv':
+<<<
+venv\Scripts\activate.ps1
+
+3.) Finally, install all of the needed packages by using the pip install command, and referencing the requirements.txt file as the argument: 
+<<<
+pip install -r requirements.txt
+
+See below for a list of the main Python packages that we will need, although take note that the data analysis portion of the program--ie, the Phase 3--may vary depending on specific user demands and needs. For example, some individuals may not want to use ML models, in which case the sklearn library will clearly be unncessary. 
+
+### Main Python packages for the webcrawler & scraper:
+
+Webcrawler, web scraping, and web access libraries & modules: 
+selenium, beautifulsoup, urllib.request, 
+
+Data cleaning & analysis libraries: 
+Pandas, DataFrame module from pandas.core.frame  
+
+File processing, time, and datetime: 
+os, time, random, datetime
+
 
 ## How do We Actually Implement the Webcrawler?
 
