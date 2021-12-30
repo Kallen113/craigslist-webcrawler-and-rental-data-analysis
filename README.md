@@ -96,5 +96,20 @@ The focus of this project is on SF Bay Area rental listings (ie, for the sfbay c
 
 One way to use this webcrawler and data cleaning program is for individuals who are looking for a new place to rent within a given region. For example, after running the webcrawler and data cleaning/pipeline portions of the project, you can then check for the least expensive rental prices within a given city or region, or to look for rental listings that match a specific set of characteristics or amenities that you desire.
 
+## Current Shortcomings and Bugs:
+
+A bug and shortcoming associated with this webcrawler program is that the data being scraped are sometimes misaligned. Namely: whenever the webcrawler accesses a rental listing that has been removed by the poster or the server, the webcrawler program will incorrectly place the scraped data for the price and all other attributes and data associated with the incorrect URL. While somewhat rare, roughly 2-4% or more of the rental listings appear to be removed while the webcrawler is being run, as a rough estimate (admittedly, only based on a few sample points of webcrawler runs that I've tested thus far).
+
+If only a single posting has been deleted, then the webcralwer program will merely misalign the various data with the incorrect URL by 1 cell for all subsequent listings stored within the outputted CSV file. In other words--after a deleted posting has been encountered--all subsequent rental listings' data will be aligned 1 cell below the actual URL, 
+However, all of the rest of the data will be correctly aligned with itself, including the rental listing ids, price, sqft, etc. The deleted posts' data--ie, with missing data for essentially all of the main scraped attributes--will typically be placed at the very bottom cell(s) of the CSV file. 
+
+A worse problem *might* occur when 2 or more postings have been deleted during a single use (session) of the webcrawler program. When 2 postings have been deleted within a given set of rental listings that the program is crawling and scraping over, then the program will misalign the data with the incorrect URL by 2 cells below. However, in some very rare cases, perhaps when there are many postings that have been deleted, then the program will incorrectly misalign the data not only with respect to the rental listing URLs, but also misalign the data with one or more of the other variables, including the listing ids.
+
+As a result, on rare occasion this bug will cause the scraped data to be misaligned and the statistics being scraped will therefore be unreliable.
+
+While a definite and reliable fix to this bug has not yet been ascertained, I likely need to revise the try...except...finally: pass block of code that is implemented within the selenium_webcrawler.py script, which includes most of the webcrawler and webcraper code and functions. This try...except...finally loop is a loop nested within a for loop, which iterates over each of the rental listing URLS found from iterating over each page of rental listings lying within a given subregion within the SF Bay Area. 
+
+1 possible fix is to *revise* the *except* block to append 'nan' values to each list of scraped data, including for the listing ids. The except block already triggers for any TimeOutException errors, which can include deleted rental listing posts. This way, we should theoretically ensure that all of the scraped data is properly aligned, even when the webcrawler encounters rental listings that have been deleted (ie, a TimeOutException error) at the time we access the given listing URL to scrape the data.
+
 ### Legal Info & Disclaimer:
 The use of this webcrawler is intended to be for personal & educational purposes only. Any commercial uses or purposes associated with the use of this repo's scripts and program are prohibited. No personal data or GIS locations of the rental listings are collected via this webcrawler program, and I do not claim any copyright ownership over any of the data from craigslist or its subsidiaries.  
