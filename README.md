@@ -25,7 +25,7 @@ Namely, we need to take the following 3 steps:
 
 1.) Change to the parent CraigslistWebScraper directory (if needed).
 2.) Activate the Python virtual environment.
--- For example, in Windows Powershell--say the virtualenvironment was called 'venv':
+-- For example, in Windows Powershell say the Python virtual environment is called 'venv':
 <<<
 venv\Scripts\activate.ps1
 
