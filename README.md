@@ -55,7 +55,7 @@ To be clear, this main.py script is found within the CraigslistWebScraper direct
 
 How do we use a terminal to implement a Python module instead of (say) running a regular Python script?
 
-Within a command-line terminal, we need to use python -m script_name_without_py_extension.
+Within a command-line terminal, we need to use: python -m script_name_without_py_extension.
 
 Ie, for our specific program, we need to do the following:
 <<<
@@ -110,6 +110,41 @@ As a result, on rare occasion this bug will cause the scraped data to be misalig
 While a definite and reliable fix to this bug has not yet been ascertained, I likely need to revise the try...except...finally: pass block of code that is implemented within the selenium_webcrawler.py script, which includes most of the webcrawler and webcraper code and functions. This try...except...finally loop is a loop nested within a for loop, which iterates over each of the rental listing URLS found from iterating over each page of rental listings lying within a given subregion within the SF Bay Area. 
 
 1 possible fix is to *revise* the *except* block to append 'nan' values to each list of scraped data, including for the listing ids. The except block already triggers for any TimeOutException errors, which can include deleted rental listing posts. This way, we should theoretically ensure that all of the scraped data is properly aligned, even when the webcrawler encounters rental listings that have been deleted (ie, a TimeOutException error) at the time we access the given listing URL to scrape the data.
+
+NB: *Important* update on Dec 30th-31, 2021: 
+
+Having revised the except block to append 'nan' values for any urls of listings that have been deleted, this try...except...finally block appears to be working correctly.
+
+So instead, the problem might be after the for loop with the inner try...else...finally code blocks has finished executing. 
+
+Namely, there appears to be 1 of 3 possibilities as to where the lists (and corresponding columns) of data are getting misaligned with each other:
+
+1.) The try...except...finally block is causing the data to be misaligned. Why?--If this is the case, then this possibly might be due to the fact that the try block might run for some of the . If this is true, then I need to remove the scraping functions--ie, parse_html_via_xpath(), etc.--and only have it run in--say-- an else statement that will run after the except block has been executed--in other words, scrape the data only until *after* an exception has been checked for. 
+
+As a result, the except block will trigger *before* any of the regular scraping takes place, thus theoretically ensuring that each list's data has been appended evenly and ego not misaligned!
+
+Or, if the issue of misalignment is after the data have been scraped--ie, if the issue is following the execution of the for loop and try...else...finally code blocks.
+
+For example, as 1 specific example of testing, scraping South Bay ('sby') data on December 30, 2021:
+
+By the time I print out each list after doing the data cleaning of the lists right after the for loop and try...except...finally code blocks finish executing, we see discrepancies in the length of some of the lists:
+
+Namely: The ids list of listing ids has the longest length at 741. The prices list of rental prices has the next longest length of 740. 
+
+By contrast, the listing urls (ie, the urls associated with each rental listing), bedrooms and bathrooms lists each have a length of only 735: ie, 5 to 6 fewer elements compared with the ids & prices lists, respectively! 
+
+The above example gives some support to the notion that the possibility #1 is correct: ie, I need to revise the try...except...finally block. 
+ 
+ One specific implementation--ie, to potentially fix the misalignment issue--might be to have a simpler try block, which will merely access the given rental listing url--ie, the list_url iterable. Then, the except block will append 'nan' values for any listing in which we encounter a TimeoutException error. Next, we need to add an else statement below the except block. The else statement's code block will comprise the actual xpath and class name scraper functions. 
+
+
+2.) The data cleaning of the lists that immediately follows the for loop with try...except...finally that iterates over each rental listing.
+
+
+
+3.) The data are misaligned when the lists of data are transformed into a Pandas' DataFrame. Namely, we convert the lists to a dictionary of lists. We then take this dictionary of lists, and convert it to a Pandas' DataFrame.
+
+--While this scenario seems fairly unlikely, it's possible the conversion to the Pandas' DataFrame is removing some of the null listing urls or otherwise causing misalignment. Still, possibilities #1 & 2 seem far more likely.  
 
 ### Legal Info & Disclaimer:
 The use of this webcrawler is intended to be for personal & educational purposes only. Any commercial uses or purposes associated with the use of this repo's scripts and program are prohibited. No personal data or GIS locations of the rental listings are collected via this webcrawler program, and I do not claim any copyright ownership over any of the data from craigslist or its subsidiaries.  
