@@ -146,5 +146,9 @@ The above example gives some support to the notion that the possibility #1 is co
 
 --While this scenario seems fairly unlikely, it's possible the conversion to the Pandas' DataFrame is removing some of the null listing urls or otherwise causing misalignment. Still, possibilities #1 & 2 seem far more likely.  
 
+## Additional features to add to the webcrawler:
+
+To further mitigate bot detection, I might want add cursor movements and scroll-downs to help mimic human-like browser activity. I could add this to the finally code block--ie, within the try...except...else...finally nested within the listing url for loop. 
+
 ### Legal Info & Disclaimer:
 The use of this webcrawler is intended to be for personal & educational purposes only. Any commercial uses or purposes associated with the use of this repo's scripts and program are prohibited. No personal data or GIS locations of the rental listings are collected via this webcrawler program, and I do not claim any copyright ownership over any of the data from craigslist or its subsidiaries.  
