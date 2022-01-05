@@ -8,7 +8,9 @@ There are essentially 3 phases to this project, although the first 2 phases are 
 ## Describing the components of the project in more detail:
 
 1) For the first phase, I will use the selenium (primarily) and beautifulsoup libraries to iterate over various rental listings within each of the SF Bay Area's subregions, such as the Peninsula, South Bay, and East Bay. This program iterates over each rental listing within a given subregion, and then scrapes data on various attributes such as the number of bedrooms, number of bathrooms, squarefeet (ie, the size of the rental home or apartment, etc.), garage or parking options, etc. After some additional parsing using the Pandas library, the scraped data are exported to a CSV file, which is organized into directories that are ordered by subregion.  
+
 2) For the 2nd phase, I will create an ETL data pipeline. The ETL will import one or more of the CSV files--ie, the files outputted by the selenium webcrawler program--as a concatenated Pandas' DataFrame. Then, using Pandas and numpy, the ETL script will clean and transform the dataframe. Finally, after deduplicating, cleaning, and wrangling the dataset, the script will insert the rental listings data into a SQL Server table.
+
 3) For the 3rd phase, we can readily import various rental listings data from the SQL Server table, given we have already run the Python selenium webcrawler program and ETL scripts at least once, respectively. After importing the data, we can then implement various data visualizations and analysis. However, take in mind that this phase of the project is more of a demonstrative purpose of use case for the data and project. In other words, the data analysis portion of this project is mainly to demonstrate what we can do with the data we have scraped using the webcrawler program. 
 
 ## Software Requirements and Packages Used for this Program:
@@ -148,7 +150,11 @@ The above example gives some support to the notion that the possibility #1 is co
 
 ## Additional features to add to the webcrawler:
 
+To facilitate a webcrawler for non-SF Bay Area regions, I might add a new script to the project that would scrape data on the subregion names for a given region--e.g., subregions of Chicago or NY. 
+
 To further mitigate bot detection, I might want add cursor movements and scroll-downs to help mimic human-like browser activity. I could add this to the finally code block--ie, within the try...except...else...finally nested within the listing url for loop. 
+
+
 
 ### Legal Info & Disclaimer:
 The use of this webcrawler is intended to be for personal & educational purposes only. Any commercial uses or purposes associated with the use of this repo's scripts and program are prohibited. No personal data or GIS locations of the rental listings are collected via this webcrawler program, and I do not claim any copyright ownership over any of the data from craigslist or its subsidiaries.  
