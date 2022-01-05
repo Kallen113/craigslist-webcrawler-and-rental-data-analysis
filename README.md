@@ -98,55 +98,6 @@ The focus of this project is on SF Bay Area rental listings (ie, for the sfbay c
 
 One way to use this webcrawler and data cleaning program is for individuals who are looking for a new place to rent within a given region. For example, after running the webcrawler and data cleaning/pipeline portions of the project, you can then check for the least expensive rental prices within a given city or region, or to look for rental listings that match a specific set of characteristics or amenities that you desire.
 
-## Current Shortcomings and Bugs:
-
-A bug and shortcoming associated with this webcrawler program is that the data being scraped are sometimes misaligned. Namely: whenever the webcrawler accesses a rental listing that has been removed by the poster or the server, the webcrawler program will incorrectly place the scraped data for the price and all other attributes and data associated with the incorrect URL. While somewhat rare, roughly 2-4% or more of the rental listings appear to be removed while the webcrawler is being run, as a rough estimate (admittedly, only based on a few sample points of webcrawler runs that I've tested thus far).
-
-If only a single posting has been deleted, then the webcralwer program will merely misalign the various data with the incorrect URL by 1 cell for all subsequent listings stored within the outputted CSV file. In other words--after a deleted posting has been encountered--all subsequent rental listings' data will be aligned 1 cell below the actual URL, 
-However, all of the rest of the data will be correctly aligned with itself, including the rental listing ids, price, sqft, etc. The deleted posts' data--ie, with missing data for essentially all of the main scraped attributes--will typically be placed at the very bottom cell(s) of the CSV file. 
-
-A worse problem *might* occur when 2 or more postings have been deleted during a single use (session) of the webcrawler program. When 2 postings have been deleted within a given set of rental listings that the program is crawling and scraping over, then the program will misalign the data with the incorrect URL by 2 cells below. However, in some very rare cases, perhaps when there are many postings that have been deleted, then the program will incorrectly misalign the data not only with respect to the rental listing URLs, but also misalign the data with one or more of the other variables, including the listing ids.
-
-As a result, on rare occasion this bug will cause the scraped data to be misaligned and the statistics being scraped will therefore be unreliable.
-
-While a definite and reliable fix to this bug has not yet been ascertained, I likely need to revise the try...except...finally: pass block of code that is implemented within the selenium_webcrawler.py script, which includes most of the webcrawler and webcraper code and functions. This try...except...finally loop is a loop nested within a for loop, which iterates over each of the rental listing URLS found from iterating over each page of rental listings lying within a given subregion within the SF Bay Area. 
-
-1 possible fix is to *revise* the *except* block to append 'nan' values to each list of scraped data, including for the listing ids. The except block already triggers for any TimeOutException errors, which can include deleted rental listing posts. This way, we should theoretically ensure that all of the scraped data is properly aligned, even when the webcrawler encounters rental listings that have been deleted (ie, a TimeOutException error) at the time we access the given listing URL to scrape the data.
-
-NB: *Important* update on Dec 30th-31, 2021: 
-
-Having revised the except block to append 'nan' values for any urls of listings that have been deleted, this try...except...finally block appears to be working correctly.
-
-So instead, the problem might be after the for loop with the inner try...else...finally code blocks has finished executing. 
-
-Namely, there appears to be 1 of 3 possibilities as to where the lists (and corresponding columns) of data are getting misaligned with each other:
-
-1.) The try...except...finally block is causing the data to be misaligned. Why?--If this is the case, then this possibly might be due to the fact that the try block might run for some of the . If this is true, then I need to remove the scraping functions--ie, parse_html_via_xpath(), etc.--and only have it run in--say-- an else statement that will run after the except block has been executed--in other words, scrape the data only until *after* an exception has been checked for. 
-
-As a result, the except block will trigger *before* any of the regular scraping takes place, thus theoretically ensuring that each list's data has been appended evenly and ego not misaligned!
-
-Or, if the issue of misalignment is after the data have been scraped--ie, if the issue is following the execution of the for loop and try...else...finally code blocks.
-
-For example, as 1 specific example of testing, scraping South Bay ('sby') data on December 30, 2021:
-
-By the time I print out each list after doing the data cleaning of the lists right after the for loop and try...except...finally code blocks finish executing, we see discrepancies in the length of some of the lists:
-
-Namely: The ids list of listing ids has the longest length at 741. The prices list of rental prices has the next longest length of 740. 
-
-By contrast, the listing urls (ie, the urls associated with each rental listing), bedrooms and bathrooms lists each have a length of only 735: ie, 5 to 6 fewer elements compared with the ids & prices lists, respectively! 
-
-The above example gives some support to the notion that the possibility #1 is correct: ie, I need to revise the try...except...finally block. 
- 
- One specific implementation--ie, to potentially fix the misalignment issue--might be to have a simpler try block, which will merely access the given rental listing url--ie, the list_url iterable. Then, the except block will append 'nan' values for any listing in which we encounter a TimeoutException error. Next, we need to add an else statement below the except block. The else statement's code block will comprise the actual xpath and class name scraper functions. 
-
-
-2.) The data cleaning of the lists that immediately follows the for loop with try...except...finally that iterates over each rental listing.
-
-
-
-3.) The data are misaligned when the lists of data are transformed into a Pandas' DataFrame. Namely, we convert the lists to a dictionary of lists. We then take this dictionary of lists, and convert it to a Pandas' DataFrame.
-
---While this scenario seems fairly unlikely, it's possible the conversion to the Pandas' DataFrame is removing some of the null listing urls or otherwise causing misalignment. Still, possibilities #1 & 2 seem far more likely.  
 
 ## Additional features to add to the webcrawler:
 
