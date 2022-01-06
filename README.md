@@ -26,6 +26,7 @@ We do *not* need to manually install Python packages. Instead, we can programmat
 Namely, we need to take the following 3 steps:
 
 1.) Change to the parent CraigslistWebScraper directory (if needed).
+
 2.) Activate the Python virtual environment.
 -- For example, in Windows Powershell say the Python virtual environment is called 'venv':
 <<<
@@ -40,10 +41,10 @@ See below for a list of the main Python packages that we will need, although tak
 ### Main Python packages for the webcrawler & scraper:
 
 Webcrawler, web scraping, and web access libraries & modules: 
-selenium, beautifulsoup, urllib.request, 
+selenium, beautifulsoup, & urllib.request 
 
 Data cleaning & analysis libraries: 
-Pandas, DataFrame module from pandas.core.frame  
+Pandas, DataFrame module from pandas.core.frame, numpy  
 
 File processing, time, and datetime: 
 os, time, random, datetime
@@ -53,7 +54,7 @@ os, time, random, datetime
 
 To implement the Python selenium webcrawler--ie, just the 1st phase of the project itself--we need to execute the main.py script as a module in a command-line terminal such as using bash, Powershell, etc. 
 
-To be clear, this main.py script is found within the CraigslistWebScraper directory, which is this project's main parent directory. 
+To be clear, this main.py script is found within the CraigslistWebScraper directory, which is this project's root directory. 
 
 How do we use a terminal to implement a Python module instead of (say) running a regular Python script?
 
