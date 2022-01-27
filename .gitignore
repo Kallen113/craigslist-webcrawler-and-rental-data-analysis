@@ -1,0 +1,16 @@
+
+# virtualenv
+.venv/
+craigslist_venv/
+
+# SQL configuration
+SQL_config/
+
+#vs code json settings for project
+.vscode/
+
+# data obtained from webcrawler and webscraping
+scraped_data/
+
+# cPython stuff
+__pycache__/
