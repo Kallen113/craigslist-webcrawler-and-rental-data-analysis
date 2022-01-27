@@ -4,7 +4,7 @@
 craigslist_venv/
 
 # SQL configuration
-SQL_config/
+# SQL_config/
 
 #vs code json settings for project
 .vscode/
