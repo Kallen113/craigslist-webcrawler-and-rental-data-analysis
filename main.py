@@ -35,7 +35,9 @@ def main():
     craigslist_crawler.load_craigslist_form_URL()
 
     # implement the main web crawler and scrape the rental listings' data:
-    df = craigslist_crawler.obtain_listing_data()  # scrape data, and store data as DataFrame
+    dict_scraped_lists = craigslist_crawler.obtain_listing_data()  # scrape data, and store data as DataFrame
+    # transform the dictionary of lists to Pandas' DataFrame:
+    df = craigslist_crawler.dict_to_df_pipeline(dict_scraped_lists)
 
     # Execute DataFrame to CSV data pipeline,after cleaning city names data for specific subregions 
     craigslist_crawler.df_to_CSV_data_pipeline(df)

@@ -103,7 +103,7 @@ SQL_db = SQL_Database(sql_config_path)  # NB: be sure to pass in path to the jso
 query_for_import = "SELECT * FROM rental WHERE price > 1;"
 # import data to DataFrame via SQL query
 df = SQL_db.import_SQL_to_df(query_for_import)
-df.info() # sanity check
+print(f"Rental data imported from SQL table:\n{df.info()}") # sanity check
 
 
 
@@ -118,8 +118,7 @@ SQL_db.insert_df_to_SQL_ETL(clist_rental)
 print(f"Data types of each column from queried SQL rental table: {df.dtypes}")
 
 def transform_data_types(df, col):
-    """Transform specific columns to target 
-    data type, as needed."""
+    """Transform specific columns to target data type, as needed."""
     pass
 
 
@@ -156,7 +155,7 @@ sns.boxplot(by='bedrooms', column=['prices'])  # boxplot of rental prices by bed
 
 # visualize heatmap of correlation coefficient matrix to analyze correlations between each of the variables within the dataset:
 # compute correlation coefficient matrix (but be sure to filter out any non-numeric columns such as cities)
-corr_ceof_matrix = df.select_dtypes(include=np.number).corr() # select only numeric cols, and compute correlation coefficient matrix
+corr_coef_matrix = df.select_dtypes(include=np.number).corr() # select only numeric cols, and compute correlation coefficient matrix
 
 sns.heatmap() # heatmap of correlation coefficient matrix
 

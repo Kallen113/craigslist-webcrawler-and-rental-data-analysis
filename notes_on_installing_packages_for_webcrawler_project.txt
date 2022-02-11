@@ -1,0 +1,30 @@
+## To install packages for this webcrawler program, we are using the pip-compile module from the pip-tools library
+
+## NB!: We are using a requirements.in file *in addition to* a requirements.txt file, so that we can track dependencies, including transitive dependencies, while also keeping track of all libraries that are used in the Python scripts for this project.
+
+## The pip-compile module and pip-tools library-as opposed to the standard pip library-enables us to track all of these changes via the .in file.
+
+## Steps:
+
+# 1) Create and activate a Python virtual environment  
+# NB: in Powershell, activate a venv by doing: <<< ./venv/Scripts/activate.ps1
+
+# 2) Use pip to install the required packages to the virtualenv, based on the packages listed from the requirements.txt file
+
+# ie:: 
+#   <<< pip install -r requirements.txt
+
+
+## To save the required Python packages to the requirements.in & requirements.txt files, I did the following steps,
+## *although* note that these steps are *not* required for new users of this program *given* that 
+## the 2 requirements files *already* contain the required libraries and dependencies!
+
+## Steps on *how* I saved the required libraries to requirements.in and then requirements.txt via pip-compile library:
+
+## a) Save all packages installed on the craigslist_venv Python virtualenv to a requirements.in file:
+## Ie:     
+##      <<< pip freeze > requirements.in 
+
+## b) Use pip-compile library to save all dependencies to requirements.txt
+## Ie:      
+##      <<< pip-compile requirements.in

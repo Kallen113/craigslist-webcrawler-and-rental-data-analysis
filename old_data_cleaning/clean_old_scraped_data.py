@@ -199,7 +199,10 @@ def main():
     df = move_col_loc_for_df_dict(df, 'flat', flat_new_loc)
 
     # move 'land' col:
-    df = move_col_loc_for_df_dict(df, 'land', land_new_loc) 
+    df = move_col_loc_for_df_dict(df, 'land', land_new_loc)
+
+    # 3 d) Remove unneeded cols:
+    df = remove_cols(df)
 
     ## 4) Export cleaned/transformed data:
     # NB: I've manually created a new sub-folder within the main scraped sfbay directory, to contain just these cleaned 'old' scraped data--ie, scraped via an older version of the webcrawler (namely: prior to the bug fix on Jan 1, 2022)

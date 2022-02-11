@@ -1,7 +1,10 @@
 {
-"driver": "{SQL Server Native Client 11.0}",
-"server": "PC-FHASDJ\\SQLEXPRESS",
-"database": "clist",
-"username": "JL",
-"password": "^4441^6G7094hasdhA"
-}
+    "driver": "{SQL Server Native Client 11.0}",
+    "server": "PC-FHASDJ\\SQLEXPRESS",
+    "database": "clist",
+    "username": "JL",
+    "password": "^4441^6G7094hasdhA"
+    } 
+
+    
+    

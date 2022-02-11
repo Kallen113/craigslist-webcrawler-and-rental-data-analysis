@@ -44,6 +44,11 @@ def indicator_vars_from_scraped_data(df, col_to_parse, attr_substr):
     """ Parse scraped attribute data by parsing to indicator variable."""
     return np.where(df[col_to_parse].str.contains(attr_substr), 1, 0)
 
+# clean lists of scraped data
+def clean_scraped_lists():
+    pass
+
+
 ## Create indicator variable, but use 2 Pandas' str.contains() methods--including a str does *not* contain-- as arguments to avoid parsing home types that contain another as a substring--e.g., when we parse single_fam homes, we need to do a str.contains() on 'house', but simultaneously do a str does not contain on 'townhouse' since the substr house is contained within townhouse!
 def indicator_vars_compound_str_contains(df, col_to_parse, attr_substr, attr_does_not_contain):
     """Parse attribute data to account for home types that have substrings that overlap with other ones.  For ex: single family homes are denoted on listings merely as 'house', which means this would overlap as a substring with townhouse home type listings.  So we need to account for this substring overlapping by using Pandas' logical not operator of '~' in tandem with a regular Pandas' str.contains() method as the arguments for a numpy.where() clause. 
@@ -112,9 +117,23 @@ def parse_attrs(df_from_dict):
     ## Parse no smoking allowed data
     df_from_dict['no_smoking'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'no smoking') 
 
+def clean_bedroom_studio_apt_data(df, col_to_parse, col_to_assign):
+    """Clean bedrooms data for rental listings that comprise studio apartments and have 'nan' values, indicating ."""
+    # look up whether given rental listing record comprises a studio apt
+    substr_studio_apt_lookup = 'studio'
+    # change bedrooms data from 'nan' to 0 (ie, 0 bedrooms) for studio apt rental listings that currently have bedrooms val of 'nan':
+    conditions = [
+        (df[col_to_parse].str.contains(substr_studio_apt_lookup, case=False))\
+            & (df[col_to_assign].str.contains('nan')) # joint condition will be true only if: a) rental listing comprises a studio apt (based on case-insensitive search for 'studio' substr ) & b) current val for record in bedrooms col is 'nan'     
+        ]
+    choices = [0]  # assign val of 0 to bedrooms col if joint condition is true
+    return np.select(conditions, choices, default = df[col_to_assign])  # replace bedrooms data with val of 0 if conditions are true, else leave val of bedrooms unchanged 
+    
 
 def print_scraped_sanity_checks(df):
     print("\n\nSanity check on scraped data from Dataframe:\n\n")
     print(f"Listing ids: {df['ids']}\n")
     print(f"Listing urls: {df['listing_urls']}\n")
-    print(f"\nPrices: {df['prices']}\n\n")  
+    print(f"\nPrices: {df['prices']}\n\n")
+    
+

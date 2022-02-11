@@ -2,7 +2,6 @@
 import os
 import glob
 import datetime
-
 # data analysis libraries & SQL libraries
 import numpy as np
 import pandas as pd
@@ -12,30 +11,25 @@ import pyodbc
 # use json library to open a json file, which contains SQL credentials & configuration--ie, username, password, etc.
 import json 
 
-"""
-NB: see following links for useful documentation and examples on importing CSV files into SQL Server via Python:
-<https://stackoverflow.com/questions/39899088/import-csv-file-into-sql-server-using-python>
+## Data pipeline of Pandas' df to SQL Server -- import scraped craigslist rental listings data from CSV files to single Pandas' df: 
 
-Import a CSV File to SQL Server using Python(2021)
-<https://datatofish.com/import-csv-sql-server-python/#:~:text=1%20Prepare%20the%20CSV%20File.%20To%20begin%2C%20prepare,as%20well%20as%20...%206%20Perform%20a%20Test>
-
-"""
-# import scraped craigslist rental listings data from CSV files to single Pandas' df 
 # recursively search parent direc to look up CSV files within subdirectories
 def recursively_import_all_CSV_and_concat_to_single_df(parent_direc, fn_regex=r'*.csv'):
     """Recursively search parent directory, and look up all CSV files.
     Then, import all CSV files to a single Pandas' df using pd.concat()"""
     path =  parent_direc # specify parent path of directories containing the scraped rental listings CSV data -- NB: use raw text--as in r'path...', or can we use the double-back slashes to escape back-slashes??
-    df_concat = pd.concat((pd.read_csv(file) for file in glob.iglob(
-        os.path.join(path, '**', fn_regex), 
-        recursive=True)), ignore_index=True)  # os.path.join helps ensure this concatenation is OS independent
+    df_concat = pd.concat((pd.read_csv(file, # import each CSV file from directory
+                                        sep=',',encoding = 'utf-8'  # assume standard CSV (ie, comma separated ) formt and use utf-8 encoding
+                                        ) for file in glob.iglob( # iterate over each CSV file in path
+                                            os.path.join(path, '**', fn_regex), 
+                                            recursive=True)), ignore_index=True)  # recursively iterate over each CSV file in path, and use os.path.join to help ensure this concatenation is OS independent
     return df_concat
 
 # 2.) Determine latest data of scraped data inserted into SQL table 
 class SQL_Database:
-    def __init__(self):
+    def __init__(self, path_for_SQL_config):
 
-        with open("D:\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\Rentals\\SQL_config\\config.json",'r') as fh:
+        with open(path_for_SQL_config,'r') as fh:
             config = json.load(fh)  # open config.json file, which contains all SQL database credentials--ie, username, password, database name, etc. 
 
         self.driver = config['driver']
@@ -43,7 +37,7 @@ class SQL_Database:
         self.database = config['database']
         self.username = config['username']
         self.password = config['password']
-        print(f"Sanity check on database name (ie, based on the json configurations file:/n{self.database}")# sanity check
+        print(f"Sanity check on database name (ie, based on the json configurations file:\n{self.database}")# sanity check
 
     # 2 a) Perform SQL query on date_posted col to determine the most recent date of data stored in the table  
     def determine_latest_date(self, query):
@@ -77,9 +71,11 @@ class SQL_Database:
         print(f"Latest date of scraped data inserted into the SQL table:\n{max_date}")
         return max_date
 
-    # 5.) insert filtered and cleaned pandas' df into SQL table
-    def insert_df_to_SQL_ETL(self, df):
-        """Insert scraped Craigslist rental listings data (ie, the Pandas' dataframe) to SQL Server database 'rental' table"""
+    # 2b) Perform SQL query to check whether there are any duplicate listings between the datetime-filtered  dataset relative to data already stored in the SQL table  
+
+    def check_for_listing_ids_via_SQL_in_operator(self, df, target_date):
+        """Insert scraped Craigslist rental listings data (ie, the Pandas' dataframe)
+        to SQL Server database 'rental' table"""
 
         # establish connection to SQL Server database-specify login credentials:
         try:  # try to establish connection to SQL Server table via pyodbc connector
@@ -98,31 +94,73 @@ class SQL_Database:
         # initialize cursor so we can execute SQL code
         cursor = conn.cursor() 
 
-        cursor.fast_executemany = True  # speed up data ingesting by reducing the numbers of calls to server for inserts
+        ## Perform SQL query on rental table to determine whether there are any rental listing duplicates--ie, listing ids from the filtered DataFrame that have already been inserted into the rental table--via SQL IN operator:  
+        
+        # NB: *only* perform SQL query if at least some data has been inserted into SQL table--we can check whether any data exists based on whether the target_date has a value other than "None":
+        if target_date != "None":   # account for scenario in which *no data* has yet been inserted into the SQL table, by ensuring the target_date (ie, latest_date_str) is not equal to "None"
 
-        # convert all variables from dataframe to str to avoid following SQL Server pyodbc error: 'ProgrammingError: ('Invalid parameter type.  param-index=2 param-type=function', 'HY105')'
-        # df = df.astype(str) # convert all df variables to str for ease of loading data into SQl Server table
+            ## get a list of all listing ids from the datetime-filtered dataframe:
+            # df = df.astype(str)  # convert dataframe to string, so we can enable pandas' df data to be more compatible with pyodbc library 
+            df_filtered_ids = df['ids'].to_list()  # obtain a list of all ids from the filtered df
+
+            # get various '?' SQL placeholders (ie, to prevent SQL injections) and a comma for each elements of the list of ids values--NB: reference the len() of the df_filtered_ids list to get the proper number of placeholders
+            q_placeholders = ",".join("?" * len(df_filtered_ids))  # get '?' placeholders and comma for each id element from the df_filtered_ids list
+
+            ## specify query, and add placeholders in between each value being checked via the IN operator
+            sql_query = "SELECT * FROM rental WHERE listing_id IN (%s)" % q_placeholders
+            
+            ## use Pandas' read_sql() method to parse the query, and use the id values of the df--ie, from the df_filtered_ids list--as the argument of the IN operator: 
+            id_query_duplicates = pd.read_sql(sql_query, conn, params=df_filtered_ids)  # query for any listings that have duplicate id's from the rental table relative to the 
+            
+            # sanity check-- Are there any duplicate listings in the SQL table vs the datetime-filtered DataFrame?
+            print(f"Duplicate listings from the datetime-filtered dataframe relative to the SQL rental table: \n{id_query_duplicates}")        
+            
+            cursor.close()
+            conn.close()
+
+            return id_query_duplicates
+        
+        else:  # ie: if *no data* has yet been inserted into SQL table
+            pass
+
+
+    # 5.) insert filtered and cleaned pandas' df into SQL table
+    def insert_df_to_SQL_ETL(self, df):
+        """Insert scraped Craigslist rental listings data (ie, the Pandas' dataframe) to SQL Server database 'rental' table"""
+
+        # establish connection to SQL Server database-specify login credentials:
+        try:  # try to establish connection to SQL Server table via pyodbc connector
+            conn = pyodbc.connect(
+            f'DRIVER={self.driver};'
+            f'SERVER={self.server};'
+            f'DATABASE={self.database};'
+            f'UID={self.username};'
+            f'PWD={self.password};'
+            'Trusted_Connection=yes;'
+            )
+        
+        except pyodbc.Error as err:  # account for possible pyodbc SQL Server connection error
+            print("Python (via pyodbc driver) was not able to connect to SQL Server database. Please double-check username and other configuration credentials, and try again.") 
+
+        # initialize cursor so we can execute SQL code
+        cursor = conn.cursor() 
+
+        cursor.fast_executemany = True  # speed up data ingesting by reducing the numbers of calls to server for inserts
         
         # insert scraped data from df to SQL table-- iterate over each row of each df col via .itertuples() method
 
-        q_mark_list = ['?']*len(df.columns)
+        # Get the number of needed '?' placeholders (ie, best practice to help prevent SQL injections) by looking up the # of cols (ie, len()) of the dataframe), and use .join() to have each question mark seprated by commas:
+        q_mark_str = ','.join('?'*len(df.columns))    # get '?' placeholders for each col of df
 
-        # # unpack list as string, and join() commas to each '?' char, so we can use these as placeholders in the SQL query
-        q_mark_str = ','.join(q_mark_list)
-        
-        ## NB: create '?' char marks as SQL placeholders for values (to help prevent SQL injections)--we determine the number of needed '?' chars by looking up the # of cols (ie, len()) of the dataframe), and use .join() to have each question mark separated by commas: refers to the len() of the df (ie, the number of cols from the df)  
-        q_mark_str = ','.join('?'*len(clist_rental.columns))  
-
-        # insert data by itereating over each row from df:
-
-        try:  # attempt to make data inserts into SQL table (*excepting a database error)
+        try:  # try to make data inserts into SQL table
             # specify INSERT INTO SQL statement--iterate over each row in df, and insert into SQL database:
             for row in df.itertuples():  # iterate over each row from df
                 cursor.execute(f"""INSERT INTO rental (listing_id, sqft, city, price, bedrooms, bathrooms, attr_vars,
                 date_of_webcrawler, kitchen, date_posted, region, sub_region, cats_OK, dogs_OK, wheelchair_accessible,laundry_in_bldg, no_laundry, 
                 washer_and_dryer, washer_and_dryer_hookup, laundry_on_site, full_kitchen, dishwasher, refrigerator,
-                oven,flooring_carpet, flooring_wood, flooring_tile, flooring_hardwood, flooring_other,apt_type, in_law_apt_type, condo_type, townhouse_type, cottage_or_cabin_type, single_fam_type, duplex_type, is_furnished, attached_garage,
-                detached_garage, carport, off_street_parking, no_parking, EV_charging, air_condition, no_smoking) 
+                oven,flooring_carpet, flooring_wood, flooring_tile, flooring_hardwood, flooring_other, 
+                apt, in_law_apt, condo, townhouse, cottage_or_cabin, single_fam, duplex, flat, land,
+                is_furnished, attached_garage, detached_garage, carport, off_street_parking, no_parking, EV_charging, air_condition, no_smoking) 
                 VALUES ({q_mark_str})""",
                 (row.ids,
                 row.sqft,
@@ -153,13 +191,15 @@ class SQL_Database:
                 row.flooring_tile,
                 row.flooring_hardwood,
                 row.flooring_other,
-                row.apt_type, 
-                row.in_law_apt_type,
-                row.condo_type,
-                row.townhouse_type,
-                row.cottage_or_cabin_type,
-                row.single_fam_type, 
-                row.duplex_type,
+                row.apt, 
+                row.in_law_apt,
+                row.condo,
+                row.townhouse,
+                row.cottage_or_cabin,
+                row.single_fam, 
+                row.duplex,
+                row.flat,
+                row.land,
                 row.is_furnished,
                 row.attached_garage,
                 row.detached_garage,
@@ -170,20 +210,20 @@ class SQL_Database:
                 row.air_condition,
                 row.no_smoking)
                 )
-                
+
             # save and commit changes to database
             conn.commit()
 
-            print("We have inserted the records from the DataFrame, and the SQL Server table has been updated successfully.")
+            print("\n\nWe have inserted the records from the DataFrame, and the SQL Server table has been updated successfully.")
         
         except pyodbc.Error as e: #account for possible errors while inserting dataframe into SQL table
-            print("An error occurred while inserting the DataFrame records into the SQL Server table")
-            quit()   # terminate SQL script
+            print("\nAn error occurred while inserting the DataFrame records into the SQL Server table.")
+            quit()
 
 
         # # sanity check-- ensure some data has been inserted into new SQL table
         sql_table_count_records = conn.execute("""SELECT COUNT(*) FROM rental;""").fetchall()
-        print(f"The number of records stored in the SQL table is: {sql_table_count_records[0]}")     
+        print(f"\nThe number of records stored in the SQL table is:\n{sql_table_count_records[0]}\n")     
         
         sql_query_for_record_samples = conn.execute("""SELECT TOP 3 * FROM rental;""").fetchall() # check out several of the records
         print(f"\nA few of the inserted records are: {sql_query_for_record_samples}")
@@ -200,26 +240,25 @@ def datetime_col_to_str_of_datetime(df: DataFrame, datetime_col:str):
 
 # 3.) a.) Transform Pandas' dataframe 'date_posted' column to datetime:
 def transform_cols_to_datetime(df: DataFrame, col_to_convert:str):
-    """Transform relevant column(s) to datetime using pd.to_datetime() method,
-    and parse as a datetime format as follows: MMDDYYYY"""
-    df[col_to_convert] = pd.to_datetime(
-        df[col_to_convert], format= '%Y-%m-%d-%H:%M'
-        ) 
-    return df
+    """Transform relevant column(s) to datetime using pd.to_datetime() method"""
+    return pd.to_datetime(df[col_to_convert], infer_datetime_format=True) # format= '%Y-%m-%d-%H:%M'
 
 
 # 3.) b.) filter Pandas' dataframe by latest date of date_posted found via MAX( SQL query
 def filter_df_since_specified_date(df: DataFrame, target_date: str):
     """Filter the imported scraped dataset to all data newer than the specified date (as determined via the MAX(posted_date) query)."""
-    df = df.loc[df.date_posted > target_date]  # filter to data greater than specified date
+    if target_date != "None":   # account for scenario in which *no data* has yet been inserted into the SQL table
+        df = df.loc[df['date_posted'] > target_date]  # filter to data greater than specified date
+    else:   # ie, target_date == "None"
+        pass  # do not apply filter, since no data has yet been inserted into SQL table
     return df
 
 
 # 4.) Perform all additional data cleaning procedures to prep the dataframe prior to initiating the pyodbc pandas' to SQL Server data pipeline inserts:
 
 def deduplicate_df(df: DataFrame):
-    """Remove duplicate rows based on listing ids"""
-    return df.drop_duplicates(keep='first', subset = ['ids'])
+    """Remove duplicate rows based on listing ids (keep last ones since we might want to examine the length of time a given rental listing has been posted."""
+    return df.drop_duplicates(keep='last', subset = ['ids'])
 
 
 def remove_nulls_list(df, list_of_cols):
@@ -264,18 +303,24 @@ def clean_split_city_names(df, address_critera: list, neighborhood_criteria:list
 
 
 
-def transform_cols_to_indicators(df: DataFrame, list_of_cols: list):
-    """ Transform relevant attribute columns to numeric, and specify NaNs for any missing or non-numeric data."""
+def transform_cols_to_indicators(df, list_of_cols):
+    """ Transform relevant attribute columns to numeric, and specify NaNs for any missing or non-numeric data. Finally, convert any null records to 0s for ease of inserting into SQL table."""
     df[list_of_cols] = df[list_of_cols].astype('uint8', errors='ignore') # convert any missing data to NaN 
-    print(f"Sanity check: The data types of {list_of_cols} are now: \n{df[list_of_cols].dtypes}") # sanity check on columns' data types
+    df[list_of_cols] = df[list_of_cols].fillna(0) # impute any NaN values with 0s since we can be quite certain that any rental listings not explicitly specifying a specific property type, amenity, or attribute do not actually contain said attribute, amenity, or are not said propery type. Finally, this makes it more viable to insert these data into a SQL table.  
+    print(f"\n\nSanity check: The data types of {list_of_cols} are now: \n{df[list_of_cols].dtypes}") # sanity check on columns' data types
     return df
 
 
 def transform_cols_to_int(df, list_of_cols_to_num):
     """ Transform relevant attribute columns to numeric.
-    NB: Since the scraped 'prices' data can contain commas, 
-    we need to use str.replace(',','') to remove them before converting to numeric."""
+    NB: Since the scraped 'prices' data can contain commas, we need to use str.replace(',','') to remove them before converting to numeric."""
     df['prices'] = df['prices'].str.replace(",","") # remove commas from prices data (e.g.: '2500' vs '$2,500')
+    # clean sqft data-- namely: remove all non-numeric data
+    df['sqft'] = df['sqft'].astype(str).str.replace(r'\D+', '', regex=True) # remove all non-numeric data from 'sqft' col by using regex to replace any non-numeric data from col to null ('NaN') values via the str.replace() Pandas method
+    df['sqft'] = df['sqft'].replace(r'^\s*$', np.nan, regex=True)  # replace all empty str sqft values with  null ('NaN') values 
+    # remove all null values--especially for sqft--so that we can transform these data to int64 data type: 
+    df = df.dropna(subset=list_of_cols_to_num) # remove rows with null records (for these cols), so we can readily convert this col to int, without any non-numeric or missing data
+    # finally, convert all cols from list to 'int64' integer data type:
     df[list_of_cols_to_num] = df[list_of_cols_to_num].astype('int64') # use int64 due to a) the long id values & b.) the occasional null values contained within the sqft col
     print(f"Sanity check: The data types of {list_of_cols_to_num} are now: \n{df[list_of_cols_to_num].dtypes}") # sanity check on columns' data types
     return df
@@ -300,29 +345,38 @@ def remove_bedroom_and_br_nulls(df: DataFrame):
 
 
 def transform_cols_to_float(df: DataFrame, col_to_transform: str):
-    return df[col_to_transform].astype('float')
+    return df[col_to_transform].astype('float32')
 
 
 def remove_col_with_given_starting_name(df, col_starting_name: str):
     """Remove each column from df that has a given starting name substring."""
     return df.loc[:, ~df.columns.str.startswith(col_starting_name)] 
 
-
-# NB: after completing all above data filtering and cleaning procedures, then proceed to step #5: ie, 5) insert filtered and cleaned pandas' df into SQL rental table
+# filter dataframe to remove any duplicate ids relative to SQL rental table (ie, based on results of the check_for_listing_ids_via_SQL_in_operator() function's SQL query)
+def remove_duplicate_ids_relative_to_SQL_table(df, id_query_duplicates):
+    """Remove any records from df whose ids are already inserted into (ie, duplicates of) the rental SQL table, as given by the id_query_duplicates query results"""
+    if id_query_duplicates is not None:
+        id_query_duplicates_list = id_query_duplicates['listing_id'].astype(float).apply(int).to_list() # derive a list of duplicate ids from the query results' listing_id column
+        filtered_df = df[~df['ids'].isin(id_query_duplicates_list)]  # remove (ie, filter out) all duplicate ids using the negation of isin() 
+        return filtered_df
+    else:   # do *not* apply filter if no data has yet been inserted into SQL table (ie, if id_query_duplicates is None)
+        return df
 
 
 def main():
     # # 1) Import all scraped rental listings data -- NB: in our case, we have various SF Bay Area listings data
     scraped_data_path = r"D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data\\sfbay"
-    clist_rental = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_path)
-    print(f"Sanity check--Some info of the imported scraped data: {clist_rental.info()}") # sanity check-examine size of dataset, columns, etc.
+    df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_path)
+    print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check-examine size of dataset, columns, etc.
 
 
     ## 2) Determine the last date of listings data stored in SQL table, so we can filter the dataset before inserting the data:
 
-    # initialize an instance of the SQL_Database() class, so we can perform methods from this class, and implement SQL code to the rental table 
-    SQL_db = SQL_Database()  # initialize class
+    # specify path to json file containing SQL configuration/username data
+    sql_config_path = "D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\SQL_config\\config.json" 
 
+    SQL_db = SQL_Database(sql_config_path)  # NB: initialize class and pass in path to the json SQL configuration file 
+    
     ## 2a.) specify query to select the latest date based on date_posted:
     sql_query = "SELECT MAX(date_posted) AS latest_date FROM rental;"
     # determine last date of listings records stored in SQL table
@@ -330,35 +384,39 @@ def main():
 
     ## 2) b.) Transform query results to string:
 
-    # specify name of df and datetime col to transform
-    df, dt_col = latest_date, 'latest_date' 
+    # specify name of df (ie, latest_date) containing the query results) and datetime col to transform
+    latest_date, dt_col = latest_date, 'latest_date' 
     #apply function using the 2 arguments shown above
-    latest_date_str = datetime_col_to_str_of_datetime(df, dt_col)
+    latest_date_str = datetime_col_to_str_of_datetime(latest_date, dt_col)
     # sanity check
-    print(f"The latest date among the scraped data stored in the SQL table is:\n{latest_date_str}")
+    print(f"\n\nThe latest date among the scraped data stored in the SQL table is:\n{latest_date_str}")
 
     ## 3.) Filter pandas' df dataset to data after last data inserted into SQL table--ie, the latest_date_str whose value we initially obtained from the MAX(date_posted) query
     
     ## NB: convert specific cols to datetime before filtering (for skae of consistency and replicability of this data pipeline)
-    clist_rental['date_of_webcrawler'] =  transform_cols_to_datetime(clist_rental,'date_of_webcrawler')
-    clist_rental['date_posted'] = transform_cols_to_datetime(clist_rental,'date_posted')
+    df['date_of_webcrawler'] =  transform_cols_to_datetime(df,'date_of_webcrawler')
+    df['date_posted'] = transform_cols_to_datetime(df,'date_posted')
     #sanity check
-    print("Sanity check on datetime cols: {clist_rental[['date_posted', 'date_of_webcrawler']].head()}")
+    print("Sanity check on datetime cols: {df[['date_posted', 'date_of_webcrawler']].head()}")
 
-    clist_rental = filter_df_since_specified_date(clist_rental, latest_date_str)
+    # filter df by SQL table query date--ie, via latest_date_str:
+    df = filter_df_since_specified_date(df, latest_date_str)
+    # sanity check:
+    print(f"The newest scraped data not stored in the SQL table is--\n*NB: this should be an empty df if we have already stored all of the df's data into the SQL table*: \n\n{df['date_posted']}")
 
     ## 4.)  Data cleaning:
 
-    ## remove any rows with null listing ids, prices, sqft, kitchen data, or city names   
+    ## remove any rows with null listing ids, prices, sqft, or city names   
     list_cols_to_remove_nulls = ['prices', 'ids', 'sqft', 'kitchen', 'cities']  
-    clist_rental = remove_nulls_list(clist_rental, list_cols_to_remove_nulls)
+    df = remove_nulls_list(df, list_cols_to_remove_nulls)
 
     # sanity check
-    print(f"Remaining price, city name, sqft, kitchen, & listing id nulls: \n{clist_rental[list_cols_to_remove_nulls].isnull().sum()}")
+    print(f"Remaining price, city name, sqft, kitchen, & listing id nulls: \n{df[list_cols_to_remove_nulls].isnull().sum()}")
 
-    ## clean split city names and clean abbreviated or incorrect city names 
-    # specify various address and street name that we need to remove from the city names 
+    ## clean split city names and clean abbreviated or incorrect city names:
+    # specify various address and street name that we need to remove from the city names
     address_criteria = ['Boulevard', 'Blvd', 'Road', 'Rd', 'Avenue', 'Ave', 'Street', 'St', 'Drive', 'Dr', 'Real', 'E Hillsdale Blvd'] 
+    
     # specify various extraneous neighborhood names such as 'Downtown' 
     neighborhood_criteria = ['Downtown', 'Central/Downtown', 'North', 'California', 'Ca.', 'Bay Area', 'St. Helena', 'St', 'nyon', 
     'Jack London Square', 'Walking Distance To', 'El Camino', 'Mendocino County', 'San Mateo County', 'Alameda County', 'Rio Nido Nr', 'Mission Elementary', 
@@ -366,7 +424,7 @@ def main():
     'East Bay', 'Morton Dr'] 
 
     # specify what delimiters we want to search for to unsplit the split city names data:
-    split_city_delimiters =  [',', '/']
+    split_city_delimiters =  [',', '/', ' - ']
     # specify dictionary of abbreviated & mispelled cities:
     incorrect_city_names = {'Rohnert Pk':'Rohnert Park', 'Hillsborough Ca': 'Hillsborough', 'South Sf': 'South San Francisco', 'Ca':'', 'East San Jose':'San Jose', 'Vallejo Ca':'Vallejo', 'Westgate On Saratoga .':'San Jose', 'Bodega':'Bodega Bay', 'Briarwood At Central Park':'Fremont', 'Campbell Ca':'Campbell', 'Almaden':'San Jose', '.':'', 'East Foothills':'San Jose', 'Lake County':'', 'West End':'Alameda', 'Redwood Shores':'Redwood City'}
 
@@ -375,83 +433,84 @@ def main():
 
     # specify dictionary of city names that are mispelled after having removed various street and neighborhood substrings:
     cities_that_need_extra_cleaning = {'. Helena': 'St. Helena', '. Helena Deer Park': 'St. Helena', 'San Los':'San Carlos', 'Tro Valley':'Castro Valley', 'Rohnert Pk':'Rohnert Park',
-    'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon'}
+    'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon', 'Millbrae On The Burlingame Border':'Millbrae', 'Ockton Ca': 'Stockton', '. Rohnert Park': 'Rohnert Park'}
 
     # clean city names data:
-    clist_rental = clean_split_city_names(clist_rental, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
+    df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
     # sanity check
-    print(f"Sanity check--after cleaning the city names, let's examine some of the cleaned data: {clist_rental.cities.value_counts().tail(10)}")
-    
+    print(f"Sanity check--after cleaning the city names, let's examine some of the cleaned data: {df.cities.value_counts().tail(10)}")
+        
     ## convert specific cols to indicator variables -- # since there are many cols we want to transform to indicator variables, it's easier to simply drop the few cols that comprise str (aka, object) data 
-    cols_to_indicators = clist_rental.drop(columns =['ids', 'listing_urls', 'cities', 'attr_vars', 'listing_descrip', 'sqft', 'prices', 'bedrooms', 'bathrooms', 'date_posted', 'date_of_webcrawler']) 
-    cols_to_indicators_lis = list(cols_to_indicators.columns)
-    cols_to_indicators = [] # free space
+    cols_to_indicators = df.drop(columns =['ids', 'listing_urls', 'cities', 'attr_vars', 'listing_descrip', 'sqft', 'prices', 'bedrooms', 'bathrooms', 'date_posted', 'date_of_webcrawler']) 
+    cols_to_indicators_lis = list(cols_to_indicators.columns)   # convert col names to list
+    df = transform_cols_to_indicators(df, cols_to_indicators_lis) # transform the cols to uint8 
 
-    clist_rental = transform_cols_to_indicators(clist_rental, cols_to_indicators_lis)
-    cols_to_indicators_lis = [] # free up memory
-    # also, transform kitchen var separately, since this tends to otherwise convert to float after importing from csv files:
-    clist_rental = transform_cols_to_indicators(clist_rental, 'kitchen')
+    # also, transform kitchen, flat and land  cols separately, since they tend to otherwise convert to float after importing from csv files:
+    cols_to_indicators2 = list(df[['kitchen', 'flat', 'land']].columns)   # get list of these 3 cols
+    df = transform_cols_to_indicators(df, cols_to_indicators2)   # transform the cols to uint8 
 
-    ## convert specific cols to integer data type
+    ## convert specific cols to integer data type:
     # specify a list of cols to convert to integer
-    cols_to_int = clist_rental[['prices', 'bedrooms', 'ids', 'sqft']]
+    cols_to_int = df[['prices', 'bedrooms', 'ids', 'sqft']]
     cols_to_int_lis = list(cols_to_int.columns)  # use a list of col names
-    cols_to_int = [] # free up memory
-    clist_rental = transform_cols_to_int(clist_rental, cols_to_int_lis)  # convert list of cols to int
+    df = transform_cols_to_int(df, cols_to_int_lis)   # convert list of cols to int 
 
     ## clean bathrooms data by replacing the 'split' and 'shared' string values:
-    clist_rental['bathrooms'] = transform_shared_and_split_to_ones(clist_rental, 'bathrooms')
+    df['bathrooms'] = transform_shared_and_split_to_ones(df, 'bathrooms')
     #sanity check
-    print(f"Sanity check on bathrooms data:\n{clist_rental['bathrooms'].value_counts()}")
+    print(f"Sanity check on bathrooms data:\n{df['bathrooms'].value_counts()}")
 
     # replace any ambiguous values for bathrooms data--such as '9+' with empty strings (ie, essentially nulls) 
-    clist_rental['bathrooms']  = replace_ambiguous_data_with_empty_str(clist_rental, 'bathrooms')
+    df['bathrooms']  = replace_ambiguous_data_with_empty_str(df, 'bathrooms')
     # sanity check
-    print(f"New value counts for bathrooms data--having cleaned ambiguous records: \n{clist_rental['bathrooms'].value_counts()}")
+    print(f"New value counts for bathrooms data--having cleaned ambiguous records: \n{df['bathrooms'].value_counts()}")
 
     ## remove any bathroom or bedroom nulls:
-    clist_rental = remove_bedroom_and_br_nulls(clist_rental)
+    df = remove_bedroom_and_br_nulls(df)
     # sanity check
-    print(f"Remaining bedroom & bathroom nulls: \n{clist_rental[['bedrooms', 'bathrooms']].isnull().sum()}")
+    print(f"\nRemaining bedroom & bathroom nulls: \n{df[['bedrooms', 'bathrooms']].isnull().sum()}\n\n")
 
     ## transform bathrooms data & listing ids to float--Why float?: Because some listings specify half bathrooms--e.g., 1.5 denotes one-and-half bathrooms. Re: ids, integer data type not store the entire id value due to maximum (byte) storage constraints. 
     # convert bathrooms data to float:
-    clist_rental['bathrooms'] = transform_cols_to_float(clist_rental, 'bathrooms')    
+    df['bathrooms'] = transform_cols_to_float(df, 'bathrooms')    
     # convert ids to float:
-    clist_rental['ids'] = transform_cols_to_float(clist_rental, 'ids')    
+    df['ids'] = transform_cols_to_float(df, 'ids')    
     #sanity check
-    print(f"Sanity check on data type of ids & bathrooms data: {clist_rental[['bathrooms', 'ids']].info()}")
+    print(f"\nSanity check on data type of ids & bathrooms data: {df[['bathrooms', 'ids']].info()}\n\n")
 
     ## deduplicate based on listing ids--ie, since each rental listing has unique ids
-    clist_rental = deduplicate_df(clist_rental)
+    df = deduplicate_df(df)
     # sanity check
-    clist_duplicate_ids_check = clist_rental[clist_rental.duplicated("ids", keep= False)] 
+    clist_duplicate_ids_check = df[df.duplicated("ids", keep= False)] 
     print(f"There should be no remaining duplicate listing ids (ie, 0 rows): \n{clist_duplicate_ids_check.shape[0]}") # sanity check --check that number of duplicate rows is false (ie, wrt duplicate listing ids)
     clist_duplicate_ids_check = []  # free memory
 
     ## Remove a few columns that are irrelevant to rental price and in which we do not want to store in the SQL table:
-    #  remove 'Unnamed' columns, which might be imported errouneously via pd.read_csv()
-    clist_rental = remove_col_with_given_starting_name(clist_rental, 'Unnamed')
+    # remove 'Unnamed' columns, which might be imported errouneously via pd.read_csv()
+    df = remove_col_with_given_starting_name(df, 'Unnamed')
+
     # remove listing_urls column since we do not want to store these data into the SQL Server table-- why?: a.) because listing urls are not relevent to rental prices and b.) the listing urls quickly become invalid or dead links, so we have no need to refer back to them at this stage in the webscraping project.
-    clist_rental = remove_col_with_given_starting_name(clist_rental, 'listing_urls')
-    # remove listing_descrip column
-    clist_rental = remove_col_with_given_starting_name(clist_rental, 'listing_descrip')
+    df = remove_col_with_given_starting_name(df, 'listing_urls')
+
+    # remove listing_descrip col since we do not want to store these data in SQL table either;
+    df = remove_col_with_given_starting_name(df, 'listing_descrip')
 
     # sanity check
-    print(f"Sanity check--The remaining columns in the dataset are:\n {clist_rental.columns}")
+    print(f"Sanity check--The remaining columns in the dataset are:\n {df.columns}")
 
+    ## Final data cleaning step: Remove any rental listings data from df that are duplicates relative to the records already stored in the rental table: 
+    
+    ## perform SQL query to check for any listings that are duplicate between the data in the rental table and the datetime-filtered dataframe 
+    id_query_duplicates = SQL_db.check_for_listing_ids_via_SQL_in_operator(df, latest_date_str)  # only perform query if at least some data has been inserted into SQL table (we can verify this based on whether latest_date_str is not equal to "None")
 
+    ## Apply pandas-based function to remove duplicate ids, based on the query results (ie, id_query_duplicates)
+    df = remove_duplicate_ids_relative_to_SQL_table(df, id_query_duplicates)
+
+    # NB: after completing all above data filtering and cleaning procedures, proceed to step #5: ie, 5) insert filtered and cleaned pandas' df into SQL rental table
     ## 5.) Pandas df to SQL data pipeline--ie, INSERT the filtered data (*ie, unique data that has not been inserted yet)   
 
-    # specify path to json file containing SQL configuration/username data
-    sql_config_path = "D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\SQL_config\\config.json" 
-
-    SQL_db = SQL_Database(sql_config_path)  # NB: be sure to pass in path to the json SQL configuration file so we can load in the needed username, password, and configuration data to be able to access the SQL database
-    # Ingest data from date-filtered pandas' dataframe to SQL server--data pipeline: 
-    SQL_db.insert_df_to_SQL_ETL(clist_rental)
-
-    ## 5.) clean SQL sqft records by doing UPDATEs on sqft WHERE record has 'nan', and transform to SQL-recognized NULL values
-    SQL_db.transform_np_nans_to_SQL_nulls()
+    #  Execute data pipeline--Ingest data from date-filtered pandas' dataframe to SQL server--data pipeline: 
+    SQL_db.insert_df_to_SQL_ETL(df)
 
 
 if __name__=="__main__":

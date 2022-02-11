@@ -11,9 +11,9 @@ obtained and parsed via the Python selenium webcrawler.
 """
 
 class SQL_Database():
-    def __init__(self):
+    def __init__(self, path_for_SQL_config):
         # open config.json to access and configure credentials to establish connection between Python and SQL database 
-        with open("D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\Rentals\\SQL_config\\config.json",'r') as fh:
+        with open(path_for_SQL_config,'r') as fh:
             config = json.load(fh) # open config.json file, which contains all SQL database credentials--ie, username, password, database name, etc. 
         # specify SQL database credentials (again, we have obtained this from the config.json)
         self.driver = config['driver']
