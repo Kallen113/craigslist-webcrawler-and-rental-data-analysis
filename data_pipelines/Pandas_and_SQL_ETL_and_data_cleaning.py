@@ -71,57 +71,6 @@ class SQL_Database:
         print(f"Latest date of scraped data inserted into the SQL table:\n{max_date}")
         return max_date
 
-    # 2b) Perform SQL query to check whether there are any duplicate listings between the datetime-filtered  dataset relative to data already stored in the SQL table  
-
-    def check_for_listing_ids_via_SQL_in_operator(self, df, target_date):
-        """Insert scraped Craigslist rental listings data (ie, the Pandas' dataframe)
-        to SQL Server database 'rental' table"""
-
-        # establish connection to SQL Server database-specify login credentials:
-        try:  # try to establish connection to SQL Server table via pyodbc connector
-            conn = pyodbc.connect(
-            f'DRIVER={self.driver};'
-            f'SERVER={self.server};'
-            f'DATABASE={self.database};'
-            f'UID={self.username};'
-            f'PWD={self.password};'
-            'Trusted_Connection=yes;'
-            )
-        
-        except pyodbc.Error as err:  # account for possible pyodbc SQL Server connection error
-            print("Python was not able to connect to SQL server database and. Please try again.") 
-
-        # initialize cursor so we can execute SQL code
-        cursor = conn.cursor() 
-
-        ## Perform SQL query on rental table to determine whether there are any rental listing duplicates--ie, listing ids from the filtered DataFrame that have already been inserted into the rental table--via SQL IN operator:  
-        
-        # NB: *only* perform SQL query if at least some data has been inserted into SQL table--we can check whether any data exists based on whether the target_date has a value other than "None":
-        if target_date != "None":   # account for scenario in which *no data* has yet been inserted into the SQL table, by ensuring the target_date (ie, latest_date_str) is not equal to "None"
-
-            ## get a list of all listing ids from the datetime-filtered dataframe:
-            # df = df.astype(str)  # convert dataframe to string, so we can enable pandas' df data to be more compatible with pyodbc library 
-            df_filtered_ids = df['ids'].to_list()  # obtain a list of all ids from the filtered df
-
-            # get various '?' SQL placeholders (ie, to prevent SQL injections) and a comma for each elements of the list of ids values--NB: reference the len() of the df_filtered_ids list to get the proper number of placeholders
-            q_placeholders = ",".join("?" * len(df_filtered_ids))  # get '?' placeholders and comma for each id element from the df_filtered_ids list
-
-            ## specify query, and add placeholders in between each value being checked via the IN operator
-            sql_query = "SELECT * FROM rental WHERE listing_id IN (%s)" % q_placeholders
-            
-            ## use Pandas' read_sql() method to parse the query, and use the id values of the df--ie, from the df_filtered_ids list--as the argument of the IN operator: 
-            id_query_duplicates = pd.read_sql(sql_query, conn, params=df_filtered_ids)  # query for any listings that have duplicate id's from the rental table relative to the 
-            
-            # sanity check-- Are there any duplicate listings in the SQL table vs the datetime-filtered DataFrame?
-            print(f"Duplicate listings from the datetime-filtered dataframe relative to the SQL rental table: \n{id_query_duplicates}")        
-            
-            cursor.close()
-            conn.close()
-
-            return id_query_duplicates
-        
-        else:  # ie: if *no data* has yet been inserted into SQL table
-            pass
 
 
     # 5.) insert filtered and cleaned pandas' df into SQL table
@@ -223,7 +172,7 @@ class SQL_Database:
 
         # # sanity check-- ensure some data has been inserted into new SQL table
         sql_table_count_records = conn.execute("""SELECT COUNT(*) FROM rental;""").fetchall()
-        print(f"\nThe number of records stored in the SQL table is:\n{sql_table_count_records[0]}\n")     
+        print(f"\nThe number of total records currently stored in the SQL table is:\n{sql_table_count_records[0]}\n")     
         
         sql_query_for_record_samples = conn.execute("""SELECT TOP 3 * FROM rental;""").fetchall() # check out several of the records
         print(f"\nA few of the inserted records are: {sql_query_for_record_samples}")
@@ -247,7 +196,7 @@ def transform_cols_to_datetime(df: DataFrame, col_to_convert:str):
 # 3.) b.) filter Pandas' dataframe by latest date of date_posted found via MAX( SQL query
 def filter_df_since_specified_date(df: DataFrame, target_date: str):
     """Filter the imported scraped dataset to all data newer than the specified date (as determined via the MAX(posted_date) query)."""
-    if target_date != "None":   # account for scenario in which *no data* has yet been inserted into the SQL table
+    if target_date != "None":  # account for scenario in which *no data* has yet been inserted into the SQL table
         df = df.loc[df['date_posted'] > target_date]  # filter to data greater than specified date
     else:   # ie, target_date == "None"
         pass  # do not apply filter, since no data has yet been inserted into SQL table
@@ -268,10 +217,10 @@ def remove_nulls_list(df, list_of_cols):
 def clean_split_city_names(df, address_critera: list, neighborhood_criteria:list, split_city_delimiters: list, incorrect_city_names:dict, cities_not_in_region:dict, cities_that_need_extra_cleaning:dict):
     """Clean city names data in several ways:
     a.) Remove extraneous address & neighborhood data placed in the city names HTML object, such as 'Rd', 'Blvd', or 'Downtown'.
-    b.) Unsplit city names data that are split via ',' & '/' delimiters.
+    b.) Unsplit city names data that are split via delimiters such as ',' & '/' .
     c.) Replace abbreviated or mispelled city names, and remove city names that do not exist within the SF Bay Area (e.g., 'Redding').
     d.) Remove any digits/integers within the city names data--ie, by using a '\d+' regex as the argument of str.replace() and replace it with empty strings.
-    e.) Remove any city names records thast are left with merely empty strings (ie, the other steps removed all data for that given cities record).
+    e.) Remove any city names records that are left with merely empty strings (ie, the other steps removed all data for that given cities record).
     f.) Remove any whitespace to avoid the same city names from being treated as different entities by Pandas, Python, or SQL. 
     g.) Use str.capwords() to capitalize words (ie, excluding apostrophes).
     h.) Replace city names that are mispelled after having removed various street and neighborhood substrings such as 'St' or 'Ca'--e.g., '. Helena' should be 'St. Helena'. """
@@ -297,8 +246,10 @@ def clean_split_city_names(df, address_critera: list, neighborhood_criteria:list
     # g.) capitalize the city names using str.capwords() 
     df['cities'] = df['cities'].str.split().apply(lambda x: [val.capitalize() for val in x]).str.join(' ')
     # h) Replace city names that are mispelled after having removed various street and neighborhood substrings such as 'St' or 'Ca'--e.g., '. Helena' should be 'St. Helena' & 'San los' should be 'San Carlos'. Also, remove any non-Bay Area cities such as Redding:
-    # df['cities'] = df['cities'].str.lower() # transform all records to lower-case, for ease of cleaning the data
     df = df.replace({'cities':cities_that_need_extra_cleaning})
+    # i) Remove any remaining empty strings or null records
+    df = df[df['cities'].str.strip().astype(bool)] # remove rows with empty strings (ie, '') for cities col 
+    df = df.dropna(subset=['cities']) # remove any remaining 'cities' null records
     return df
 
 
@@ -314,12 +265,14 @@ def transform_cols_to_indicators(df, list_of_cols):
 def transform_cols_to_int(df, list_of_cols_to_num):
     """ Transform relevant attribute columns to numeric.
     NB: Since the scraped 'prices' data can contain commas, we need to use str.replace(',','') to remove them before converting to numeric."""
-    df['prices'] = df['prices'].str.replace(",","") # remove commas from prices data (e.g.: '2500' vs '$2,500')
-    # clean sqft data-- namely: remove all non-numeric data
+    df['prices'] = df['prices'].str.replace(",","") # remove commas from prices data (e.g.: '2500' vs '2,500')
+    # clean sqft data --remove all non-numeric data
     df['sqft'] = df['sqft'].astype(str).str.replace(r'\D+', '', regex=True) # remove all non-numeric data from 'sqft' col by using regex to replace any non-numeric data from col to null ('NaN') values via the str.replace() Pandas method
     df['sqft'] = df['sqft'].replace(r'^\s*$', np.nan, regex=True)  # replace all empty str sqft values with  null ('NaN') values 
-    # remove all null values--especially for sqft--so that we can transform these data to int64 data type: 
-    df = df.dropna(subset=list_of_cols_to_num) # remove rows with null records (for these cols), so we can readily convert this col to int, without any non-numeric or missing data
+    # clean prices data-- remove any records posted with sqft instead of price data
+    df = df[~df.prices.str.contains("ft2")] # remove listings records with incorrectly posted prices data 
+    # remove rows with any remaining null rows wrt list of cols (ie, sqft, prices, etc.) (so we can readily convert to int):
+    df = df.dropna(subset=list_of_cols_to_num) # remove rows with null data 
     # finally, convert all cols from list to 'int64' integer data type:
     df[list_of_cols_to_num] = df[list_of_cols_to_num].astype('int64') # use int64 due to a) the long id values & b.) the occasional null values contained within the sqft col
     print(f"Sanity check: The data types of {list_of_cols_to_num} are now: \n{df[list_of_cols_to_num].dtypes}") # sanity check on columns' data types
@@ -352,15 +305,6 @@ def remove_col_with_given_starting_name(df, col_starting_name: str):
     """Remove each column from df that has a given starting name substring."""
     return df.loc[:, ~df.columns.str.startswith(col_starting_name)] 
 
-# filter dataframe to remove any duplicate ids relative to SQL rental table (ie, based on results of the check_for_listing_ids_via_SQL_in_operator() function's SQL query)
-def remove_duplicate_ids_relative_to_SQL_table(df, id_query_duplicates):
-    """Remove any records from df whose ids are already inserted into (ie, duplicates of) the rental SQL table, as given by the id_query_duplicates query results"""
-    if id_query_duplicates is not None:
-        id_query_duplicates_list = id_query_duplicates['listing_id'].astype(float).apply(int).to_list() # derive a list of duplicate ids from the query results' listing_id column
-        filtered_df = df[~df['ids'].isin(id_query_duplicates_list)]  # remove (ie, filter out) all duplicate ids using the negation of isin() 
-        return filtered_df
-    else:   # do *not* apply filter if no data has yet been inserted into SQL table (ie, if id_query_duplicates is None)
-        return df
 
 
 def main():
@@ -416,24 +360,25 @@ def main():
     ## clean split city names and clean abbreviated or incorrect city names:
     # specify various address and street name that we need to remove from the city names
     address_criteria = ['Boulevard', 'Blvd', 'Road', 'Rd', 'Avenue', 'Ave', 'Street', 'St', 'Drive', 'Dr', 'Real', 'E Hillsdale Blvd'] 
-    
+
     # specify various extraneous neighborhood names such as 'Downtown' 
     neighborhood_criteria = ['Downtown', 'Central/Downtown', 'North', 'California', 'Ca.', 'Bay Area', 'St. Helena', 'St', 'nyon', 
     'Jack London Square', 'Walking Distance To', 'El Camino', 'Mendocino County', 'San Mateo County', 'Alameda County', 'Rio Nido Nr', 'Mission Elementary', 
     'Napa County', 'Golden Gate', 'Jennings', 'South Lake Tahoe', 'Tahoe Paradise', 'Kingswood Estates', 'South Bay', 'Skyline', 'San Antonio Tx', 
-    'East Bay', 'Morton Dr'] 
+    'East Bay', 'Morton Dr', 'Cour De Jeune'] 
 
     # specify what delimiters we want to search for to unsplit the split city names data:
-    split_city_delimiters =  [',', '/', ' - ']
+    split_city_delimiters =  [',', '/', ' - ', '_____', '#']
+
     # specify dictionary of abbreviated & mispelled cities:
-    incorrect_city_names = {'Rohnert Pk':'Rohnert Park', 'Hillsborough Ca': 'Hillsborough', 'South Sf': 'South San Francisco', 'Ca':'', 'East San Jose':'San Jose', 'Vallejo Ca':'Vallejo', 'Westgate On Saratoga .':'San Jose', 'Bodega':'Bodega Bay', 'Briarwood At Central Park':'Fremont', 'Campbell Ca':'Campbell', 'Almaden':'San Jose', '.':'', 'East Foothills':'San Jose', 'Lake County':'', 'West End':'Alameda', 'Redwood Shores':'Redwood City'}
+    incorrect_city_names = {'Rohnert Pk':'Rohnert Park', 'Hillsborough Ca': 'Hillsborough','Fremont Ca':'Fremont', 'South Sf': 'South San Francisco', 'Ca':'', 'East San Jose':'San Jose', 'Vallejo Ca':'Vallejo', 'Westgate On Saratoga .':'San Jose', 'Bodega':'Bodega Bay', 'Briarwood At Central Park':'Fremont', 'Campbell Ca':'Campbell', 'Almaden':'San Jose', '.':'', 'East Foothills':'San Jose', 'Lake County':'', 'West End':'Alameda', 'Redwood Shores':'Redwood City', 'Park Pacifica Neighborhood':'Pacifica'}
 
     # specify dictionary of cities that are not located in sfbay (ie, not located in the region):
-    cities_not_in_region = {'Ketchum':'', 'Baypoinr':'', 'Quito': '', 'Redding':'', 'Bend' :''}
+    cities_not_in_region = {'Ketchum':'', 'Baypoinr':'', 'Quito': '', 'Redding':'', 'Bend' :'', 'Near Mount Lassen':'', 'Tracy':'', 'Middletown':''}
 
     # specify dictionary of city names that are mispelled after having removed various street and neighborhood substrings:
     cities_that_need_extra_cleaning = {'. Helena': 'St. Helena', '. Helena Deer Park': 'St. Helena', 'San Los':'San Carlos', 'Tro Valley':'Castro Valley', 'Rohnert Pk':'Rohnert Park',
-    'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon', 'Millbrae On The Burlingame Border':'Millbrae', 'Ockton Ca': 'Stockton', '. Rohnert Park': 'Rohnert Park'}
+    'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon', 'Millbrae On The Burlingame Border':'Millbrae', 'Ockton Ca': 'Stockton', '. Rohnert Park': 'Rohnert Park', 'Udio Behind Main House':'', '***---rohnert Park':'Rohnert Park'}
 
     # clean city names data:
     df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
@@ -497,14 +442,6 @@ def main():
 
     # sanity check
     print(f"Sanity check--The remaining columns in the dataset are:\n {df.columns}")
-
-    ## Final data cleaning step: Remove any rental listings data from df that are duplicates relative to the records already stored in the rental table: 
-    
-    ## perform SQL query to check for any listings that are duplicate between the data in the rental table and the datetime-filtered dataframe 
-    id_query_duplicates = SQL_db.check_for_listing_ids_via_SQL_in_operator(df, latest_date_str)  # only perform query if at least some data has been inserted into SQL table (we can verify this based on whether latest_date_str is not equal to "None")
-
-    ## Apply pandas-based function to remove duplicate ids, based on the query results (ie, id_query_duplicates)
-    df = remove_duplicate_ids_relative_to_SQL_table(df, id_query_duplicates)
 
     # NB: after completing all above data filtering and cleaning procedures, proceed to step #5: ie, 5) insert filtered and cleaned pandas' df into SQL rental table
     ## 5.) Pandas df to SQL data pipeline--ie, INSERT the filtered data (*ie, unique data that has not been inserted yet)   

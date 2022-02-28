@@ -6,6 +6,7 @@ craigslist_venv/
 # SQL configuration
 SQL_config/
 
+
 #vs code json settings for project
 .vscode/
 
@@ -14,3 +15,6 @@ scraped_data/
 
 # cPython stuff
 __pycache__/
+
+# scripts used to clean & parse data that was scraped before creating current version of webcrawler
+old_data_cleaning/

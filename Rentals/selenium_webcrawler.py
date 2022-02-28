@@ -59,12 +59,12 @@ class Craigslist_Rentals(object):
         options.add_argument("start-maximized")   # maximize webdriver's browser windows
         options.add_argument("--disable-extensions")  # disable any browser extensions
         options.add_argument("disable-infobars") # disable browser infobars
-        # install and/or update latest Chrome Webdriver, and implement the options specified above:
+        # install and/or update to latest Chrome Webdriver, and implement the options specified above:
         self.web_driver  = webdriver.Chrome(
             ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library 
             options=options  # implement the various options stated above
         )
-        self.download_delay = 15   # set maximum download delay of 15 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
+        self.download_delay = 20   # set maximum download delay of 20 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
 
 
     def load_craigslist_form_URL(self):
@@ -73,7 +73,7 @@ class Craigslist_Rentals(object):
         This function will wait up to a maximum number of seconds as designated by download_delay, otherwise a TimeOutException will trigger."""
         self.web_driver.get(self.url) # implement a GET request by loading up the customized Craigslist SF Bay Area rental listing pages via a Chrome webdriver
 
-        """Tell the web scraper to wait until the webpage's "searchform" form tag has been loaded, or up to a maximum 15 seconds (ie, given the value of download_delay"""
+        # wait until the webpage's "searchform" form tag has been loaded, or up to a maximum 20 seconds (ie, given the value of self.download_delay)
         try: # wait until the form tag with ID of "searchform"--ie, the Craigslist page given our search results--has been loaded, or up to a maximum of 5 seconds (given download_delay)
             WebDriverWait(self.web_driver, self.download_delay).until(
                 EC.presence_of_element_located((By.ID, "searchform"))
@@ -90,8 +90,8 @@ class Craigslist_Rentals(object):
         b.) Then, scrape the HTML element and extract the element's text data."""
         try:
             # a.) wait until given HTML element has loaded
-            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 15 seconds to let HTML element load on given rental listing webpage
-            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 15 seconds
+            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 20 seconds to let HTML element load on given rental listing webpage
+            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 20 seconds
             # b.) scrape the HTML element, extract text, and append to given list
             scraped_html = self.web_driver.find_element_by_xpath(xpath_arg)
 
@@ -100,14 +100,14 @@ class Craigslist_Rentals(object):
             return list_to_append.append('nan')  # indicate missing value
 
         return list_to_append.append(scraped_html.text)  # parse text data from scraped html element, and append to list for given variable of interest
-
+ 
 
     def parse_html_via_xpath_and_click(self, xpath_arg: str, list_to_append: list):
         """ Scrape data from HTML element by looking up xpath (via selenium find_element_by_xpath() method), but then click to reveal the date-time data."""
         # a.) wait until given HTML element has loaded
         try:
-            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 15 seconds to let HTML element load on given rental listing webpage
-            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 15 seconds
+            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 20 seconds to let HTML element load on given rental listing webpage
+            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 20 seconds
             # b.) scrape the HTML element, extract text, and append to given list
             date_posted_click = self.web_driver.find_element_by_xpath(xpath_arg)
             # # provide delay to avoid being flagged by server as a bot, before we access each subsequent listing.
@@ -126,8 +126,10 @@ class Craigslist_Rentals(object):
     def mk_direc_for_scraped_data(self, parent_direc: str, new_path: str) -> str:
         """Create directory (if it doesn't exist) to contain the scraped data, with separate directories for specific regions and subregions."""
         parent_direc = parent_direc  # specify the parent directory where we will create new direc
-        # add region and sub-region names as separate child directories
-        new_path = new_path + "\\" +f"{self.region}" + "\\" + f"{self.subregion}"
+        # use f-strings to add in backslahes as directory separators 
+        backslashes_separator = "\\"
+        # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
+        new_path = f"{new_path}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
         path_for_csv = os.path.join(parent_direc, new_path)  # specify full path--including the new path we will create
 
         if not os.path.exists(path_for_csv):
@@ -141,12 +143,19 @@ class Craigslist_Rentals(object):
         Append today's date and region + subregion names to CSV file name."""
         # specify preface of CSV file name
         csv_preface_name = 'craigslist_rental'
-        # add region and subregion sub-directories to path where we will save the CSV file
-        path_for_csv = parent_direc_for_csv + "\\" + f"{self.region}" + "\\" + f"{self.subregion}"
+        # use f-strings to add in backslahes as directory separators 
+        backslashes_separator = "\\"
+        # add region and subregion sub-directories to path where we will save the CSV file--NB: add in backslashes_separator to separate different sub-directories:
+        path_for_csv = f"{parent_direc_for_csv}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
+        
         # append today's date and the .csv extension to suffix of CSV file name
         today_dt_str = datetime.date.today().strftime("%m_%d_%Y")  # get today's date in 'mm_dd_YYYY' format
+        # specify underscore -- ie, '_' --as file name separator using f-strings
+        underscore_separator = '_'
+        # specify CSV file suffix
+        csv_suffix = '.csv'
         # add region and subregion names to CSV file, and add .csv extension:
-        csv_file_name = csv_preface_name + '_' + self.region + '_' + self.subregion + '_' + today_dt_str + '.csv' # append today's date and .csv extension to the file name
+        csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{underscore_separator}{csv_suffix}" # append today's date and .csv extension to the file name
         # export dataframe to CSV. NB: concatenate CSV file name to the path by using os.path.join(). Also, do not export index since it does not contain pertinent data
         return df.to_csv(os.path.join(path_for_csv, csv_file_name), index=False)
 
@@ -204,7 +213,7 @@ class Craigslist_Rentals(object):
                 listing_urls = list(OrderedDict.fromkeys(listing_urls))  # remove any duplicate listing urls
 
                 # wait a minimum of 8 seconds, but randomize the amount of time delay, in order to mimic a more human-like browser activity
-                rand_sl_time = random.randrange(8, 15) # specify a range of pseudo-random values from 8 to 15 seconds
+                rand_sl_time = random.randrange(8, 15) # specify a range of pseudo-random values
 
                 ##  Iterate over each of the rental listing href URLs
                 # N = 12
@@ -253,7 +262,6 @@ class Craigslist_Rentals(object):
 
                             self.parse_html_via_xpath('//span[@class="housing"]', sqft)
 
-
                             ## Scrape listing descriptions (so we can obtain data on attributes & amenities such as kitchen, dishwasher, and refrigerator (ie, several amenities) data):
                             self.parse_html_via_xpath('//*[@id="postingbody"]', listing_descrip)
 
@@ -276,6 +284,7 @@ class Craigslist_Rentals(object):
                                 pass # I.e.: move on to the next rental listing
                             else:  # Ie: Once we have iterated through each listing URL, then immediately terminate the for loop."""
                                 break
+
                 ## Data cleaning and parsing of scraped lists-- bedroom, sqft, bathrooms, prices, etc.:
 
                 # sqft data-- 1.) search for 'ft2' substring to indicate presence of sqft data. If this substring is found in given element, then parse the sqft data by removing the given substring and getting only the last element after splitting on whitespace so we can remove the bedroom data, which is always contained just before the sqft data. If sqft data does not exist, then return an 'nan' value instead to denote a null. When the function detects previous 'nan' values, leave unchanged as 'nan'.
@@ -340,26 +349,26 @@ class Craigslist_Rentals(object):
 
         ## clean data for specific subregions, and export scraped data from Dataframe to CSV file:
 
-        if self.subregion=='sfc':  # clean San Francisco data
+        if self.subregion is 'sfc':  # clean San Francisco data
             """If subregion is 'sfc', transform city names data from neighborhood names to 'San Francisco', and remove any data misclassified as being within this county."""
             df = clean_city_names_for_sf(sf_neighborhoods, df) # clean scraped data if scraped from 'sfc' subregion
             self.export_to_csv(df, scraped_data_path)
             return df
 
-        elif self.subregion=='scz': # clean Santa Cruz data
+        elif self.subregion is 'scz': # clean Santa Cruz data
             """If subregion is 'scz', remove any data misclassified as being within this county."""
             df = clean_mislabelled_santa_cruz_data(san_cruz_cities, df) # clean scraped data if scraped from 'scz' subregion
             self.export_to_csv(df, scraped_data_path)
             return df
 
-        elif self.subregion=='sby':  # clean South Bay data
+        elif self.subregion is 'sby':  # clean South Bay data
             """If subregion is 'sby', clean city names data for cities such as San Jose & Santa Clara."""
             df = clean_given_city_names_data('San Jose', sj_neighborhoods, df)    # clean San Jose data
             df = clean_given_city_names_data('Santa Clara', santa_clara_neighborhoods, df)  # clean Santa Clara data
             self.export_to_csv(df, scraped_data_path)
             return df
 
-        elif self.subregion=='eby':  # clean East Bay data
+        elif self.subregion is 'eby':  # clean East Bay data
             """If subregion is 'eby', clean city names data for cities such as Oakland & Hayward."""
             df = clean_given_city_names_data('Oakland', oakland_neighborhoods, df) # clean Oakland data
             df = clean_given_city_names_data('Hayward', hayward_neighborhoods, df)  # clean Hayward data                    
