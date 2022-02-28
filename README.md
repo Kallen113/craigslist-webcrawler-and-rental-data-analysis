@@ -1,7 +1,7 @@
 # craigslist-webcrawler
 ## Python-- Project Overview, and using selenium for a webcrawler and webscraper of craigslist rental listings data: 
 
-This repo comprises a Python web crawler of craigslist rental listings data using primarily the selenium library to crawl ovewr craigslist rental listings pages and scrape these rental listings data. 
+This repo comprises a Python web crawler of craigslist rental listings data using the selenium and requests library to scrape rental listings data. 
 
 There are essentially 3 phases to this project, although the first 2 phases are the primary focus: 1) A webcrawler & webscraper of rental listings data; 2.) Data cleaning and a data pipeline using Pandas and pyodbc to insert data from a Pandas' DataFrame to a SQL Server table; and 3.) Using the data scraped via the webcrawler program, I will implement a data analysis project and visualizations, with a focus on examining rental prices at the city level. In other words, I will attempt to answer the followiong question: For rental listings in the San Francisco Bay Area (SF Bay Area) cities, what are the major determinants of rental prices, and how well can we predict rental prices using the scraped data? 
 
