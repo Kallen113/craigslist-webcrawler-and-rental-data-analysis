@@ -44,10 +44,6 @@ def indicator_vars_from_scraped_data(df, col_to_parse, attr_substr):
     """ Parse scraped attribute data by parsing to indicator variable."""
     return np.where(df[col_to_parse].str.contains(attr_substr), 1, 0)
 
-# clean lists of scraped data
-def clean_scraped_lists():
-    pass
-
 
 ## Create indicator variable, but use 2 Pandas' str.contains() methods--including a str does *not* contain-- as arguments to avoid parsing home types that contain another as a substring--e.g., when we parse single_fam homes, we need to do a str.contains() on 'house', but simultaneously do a str does not contain on 'townhouse' since the substr house is contained within townhouse!
 def indicator_vars_compound_str_contains(df, col_to_parse, attr_substr, attr_does_not_contain):
@@ -68,44 +64,72 @@ def parse_attrs(df_from_dict):
     df_from_dict['wheelchair_accessible'] = indicator_vars_from_scraped_data(df_from_dict,'attr_vars', 'wheelchair accessible')
     
     ## Parse laundry and washer+dryer data:
+    # laundry in building
     df_from_dict['laundry_in_bldg'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'laundry in bldg')
+    # no laundry available on site
     df_from_dict['no_laundry'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'no laundry on site' )  # no laundry on site
+    # washer and dryer appliances included
     df_from_dict['washer_and_dryer'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'w/d in unit' ) # parse w_d data-- ie, washer and dryer included
+    # washer and dryer hookup (but no appliances)
     df_from_dict['washer_and_dryer_hookup'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'w/d hookups' ) # washer and dryer hookup  
+    # laundry services available
     df_from_dict['laundry_on_site'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'laundry on site' ) # laundry_on_site
 
     ## Kitchen and household appliances data:
-    df_from_dict['full_kitchen'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'full kitchen') # full kitchen data
-    df_from_dict['dishwasher'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'dishwasher') # dishwasher included
-    df_from_dict['refrigerator'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'refrigerator') # refrigerator included
-    df_from_dict['oven'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'oven') # oven included
+    # full kitchen data
+    df_from_dict['full_kitchen'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'full kitchen') 
+    # dishwasher included
+    df_from_dict['dishwasher'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'dishwasher') 
+    # refrigerator included
+    df_from_dict['refrigerator'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'refrigerator') 
+    # oven included
+    df_from_dict['oven'] = indicator_vars_from_scraped_data(df_from_dict, 'listing_descrip', 'oven') 
     
     ## Flooring attributes: 
+    # carpet flooring
     df_from_dict['flooring_carpet'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'flooring: carpet')
+    # wood flooring
     df_from_dict['flooring_wood'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'flooring: wood')
+    # tile flooring
     df_from_dict['flooring_tile'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'flooring: tile')
+    # hardwood flooring
     df_from_dict['flooring_hardwood'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'flooring: hardwood')
+    # other/unclassified flooring
     df_from_dict['flooring_other'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'flooring: other')
 
     ## Parse rental type data-- NB: At least for the most part, each rental listing on craigslist will always explicitly state what type of home is up for rent.
+    # apartments
     df_from_dict['apt'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'apartment')  # apt data:
+    # in law 
     df_from_dict['in_law_apt'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'in-law') # in-law apt--NB: in-law apartments are formally called "Accessory Dwelling Units (ADUs)"". A more detailed description  is available at CA's HCD department: <https://www.hcd.ca.gov/policy-research/accessorydwellingunits.shtml>
+    # condo properties
     df_from_dict['condo'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'condo') # condo rental type
+    # townhouses
     df_from_dict['townhouse'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'townhouse')  # townhouse rental type
+    # cottage or cabin
     df_from_dict['cottage_or_cabin'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'cottage/cabin')  # cottage or cabin
+    # single family homes
     df_from_dict['single_fam'] = indicator_vars_compound_str_contains(df_from_dict, 'attr_vars', 'house', 'townhouse')  # parse single-family home type listings while also ensuring we also filter out any townhouse listings!    df_from_dict['duplex'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'duplex')  # duplex rental type
+    # duplex
     df_from_dict['duplex'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'duplex')  # duplex rental type
+    # flat property type
     df_from_dict['flat'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'flat') # flat (ie, large apartment-like) rental type
+    # land-- e.g., RV lot
     df_from_dict['land'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'land') # land rental type--e.g., RV parking
 
     ## furnished rental unit
     df_from_dict['is_furnished'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'furnished')
 
     ## Parse garage & parking data: 
+    # attahced garage
     df_from_dict['attached_garage'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'attached garage') #attached_garage 
+    # detached garage
     df_from_dict['detached_garage'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'detached garage') # detached_garage
+    # carport
     df_from_dict['carport'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'carport')  # carport
+    # off street parking
     df_from_dict['off_street_parking'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'off-street parking') # off_street_parking
+    # no parking options available on site
     df_from_dict['no_parking'] = indicator_vars_from_scraped_data(df_from_dict, 'attr_vars', 'no parking')  # no parking 
 
     # Electrical vehicle charging
@@ -126,9 +150,13 @@ def clean_bedroom_studio_apt_data(df, col_to_parse, col_to_assign):
         (df[col_to_parse].str.contains(substr_studio_apt_lookup, case=False))\
             & (df[col_to_assign].str.contains('nan')) # joint condition will be true only if: a) rental listing comprises a studio apt (based on case-insensitive search for 'studio' substr ) & b) current val for record in bedrooms col is 'nan'     
         ]
-    choices = [0]  # assign val of 0 to bedrooms col if joint condition is true
-    return np.select(conditions, choices, default = df[col_to_assign])  # replace bedrooms data with val of 0 if conditions are true, else leave val of bedrooms unchanged 
-    
+    # assign val of 0 to bedrooms col if joint condition is true
+    choices = [0]  
+    # replace bedrooms data with val of 0 if conditions are true, else leave val of bedrooms unchanged 
+    return np.select(conditions, choices, default = df[col_to_assign])  
+
+def clean_listing_ids_and_remove_nan_substr(df, col_to_clean, substr_to_filter_out):
+    return df[df[col_to_clean].str.contains(substr_to_filter_out)==False]
 
 def print_scraped_sanity_checks(df):
     print("\n\nSanity check on scraped data from Dataframe:\n\n")
@@ -136,4 +164,3 @@ def print_scraped_sanity_checks(df):
     print(f"Listing urls: {df['listing_urls']}\n")
     print(f"\nPrices: {df['prices']}\n\n")
     
-

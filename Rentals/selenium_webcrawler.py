@@ -1,5 +1,6 @@
 #import various data analysis, web scraping, and web crawling libraries--ie, pandas, various Selenium modules, etc.
 #file processing lbraries (os), time (for .sleep() method), datetime, iteration, and other tools
+import csv
 import os
 import time
 import random
@@ -11,6 +12,7 @@ import datetime
 # data analysis libraries
 import pandas as pd
 from pandas.core.frame import DataFrame
+from scipy.fft import fft
 
 #web crawling, web scraping & webdriver libraries and modules
 from selenium import webdriver  # NB: this is the main module we will use to implement the webcrawler and webscraping. A webdriver is an automated browser.
@@ -27,7 +29,7 @@ from .clean_city_names import clean_city_names_for_sf, sf_neighborhoods, clean_g
 from .clean_santa_cruz_data import clean_mislabelled_santa_cruz_data, san_cruz_cities  # import from same directory (ie,. dot prefix) a function to remove rows that are misclassified as 'scz', and import list of Santa Cruz county cities
 
 # import data cleaning script from the parent direc (*ie, scraper_and_data_cleaning_functions.py), which includes various data cleaning and HTML-parser functions via selenium methods:
-from scraper_and_data_cleaning_functions import clean_scraped_sqft_data, clean_scraped_bedroom_data, clean_scraped_bathroom_data, clean_scraped_cities_data, parse_kitchen_data,  parse_attrs, clean_bedroom_studio_apt_data, print_scraped_sanity_checks
+from scraper_and_data_cleaning_functions import clean_scraped_sqft_data, clean_scraped_bedroom_data, clean_scraped_bathroom_data, clean_scraped_cities_data, parse_kitchen_data,  parse_attrs, clean_bedroom_studio_apt_data, clean_listing_ids_and_remove_nan_substr, print_scraped_sanity_checks
 
 
 #define the Craigslist web scraper and web crawler, which we will use to scrape Craigslist SF Bay area rental listings data:
@@ -38,7 +40,6 @@ class Craigslist_Rentals(object):
     def __init__(self, region: str, subregion: str, housing_category: str, min_price: int, max_price: int, rent_period: int, sale_date: str):
         """ Define the customized URL to search for rental listings within the SF Bay Area.
         This URL will be used to implement the selenium web scraper.
-
         Finally, initialize a selenium webdriver for the web crawler (Chrome in our case) and set the maxnumber of seconds we will allow as a delay in between when the GET request is sent via the web driver and the time in which the crawled webpage takes to load before starting a download for each given webpage."""
         # define various parameters for a customized SF Bay Area Craigslist rental listing URL:
         self.region = region
@@ -48,22 +49,26 @@ class Craigslist_Rentals(object):
         self.max_price = max_price
         self.rent_period = rent_period
         self.sale_date = sale_date
-        # specify each of the above parameters --using an f-string--to enable us to make a customized search of SF Bay Area rental listings on Craigslist
+
+        ## Create customized URL for  specify each of the above parameters --using an f-string--to enable us to make a customized search of SF Bay Area rental listings on Craigslist
         self.url = f"https://{region}.craigslist.org/search/{subregion}/{housing_category}?/min_price={min_price}&max_price={max_price}&availabilityMode=0&rent_period={rent_period}&sale_date={sale_date}"
         #sanity check the craigslist URL derived from the __init__() function:
         print(f"The craigslist URL we will use to perform the web crawler is: \n{self.url}")
-        # initialize a webdriver for selenium to use for our webcrawler:
+
+        ## Initialize a Webdriver for selenium to implement the webcrawler:
         driver_path = r"C:\webdrivers\chromedriver_win32.exe\chromedriver.exe" #specify path to webdriver
+
         # specify various options to reduce the likelihood that selenium's webdriver HTML-parsing functions might miss HTML elements we want the script to scrape and parse
         options = Options()  # initialize Options() object, so we can customize and specify options for the web driver
-        options.add_argument("start-maximized")   # maximize webdriver's browser windows
         options.add_argument("--disable-extensions")  # disable any browser extensions
+        options.add_argument("start-maximized")   # maximize webdriver's browser windows
         options.add_argument("disable-infobars") # disable browser infobars
+
         # install and/or update to latest Chrome Webdriver, and implement the options specified above:
         self.web_driver  = webdriver.Chrome(
-            ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library 
-            options=options  # implement the various options stated above
-        )
+            ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+            options=options  # implement the various options specified above
+            )
         self.download_delay = 20   # set maximum download delay of 20 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
 
 
@@ -84,7 +89,7 @@ class Craigslist_Rentals(object):
             print(f"Loading the webpage's searchform element timed out: ie, it took longer than the  maximum number of {self.download_delay} seconds designated by the download_delay.")
 
 
-    def parse_html_via_xpath(self, xpath_arg: str, list_to_append: list):
+    def parse_html_via_xpath(self, xpath_arg: str, list_to_append: list) -> list:
         """ Scrape data from HTML element by looking up xpath (via selenium's find_element_by_xpath() method), within a try except control flow clause to account for rental listings that are missing a given HTML element.
         a.) Except if a NoSuchElementException or TimeoutException occurs--indicating a given element does not exist--then wait until given HTML element has loaded on page using WebDriverWait() method.
         b.) Then, scrape the HTML element and extract the element's text data."""
@@ -100,9 +105,9 @@ class Craigslist_Rentals(object):
             return list_to_append.append('nan')  # indicate missing value
 
         return list_to_append.append(scraped_html.text)  # parse text data from scraped html element, and append to list for given variable of interest
- 
 
-    def parse_html_via_xpath_and_click(self, xpath_arg: str, list_to_append: list):
+
+    def parse_html_via_xpath_and_click(self, xpath_arg: str, list_to_append: list)-> list:
         """ Scrape data from HTML element by looking up xpath (via selenium find_element_by_xpath() method), but then click to reveal the date-time data."""
         # a.) wait until given HTML element has loaded
         try:
@@ -126,7 +131,7 @@ class Craigslist_Rentals(object):
     def mk_direc_for_scraped_data(self, parent_direc: str, new_path: str) -> str:
         """Create directory (if it doesn't exist) to contain the scraped data, with separate directories for specific regions and subregions."""
         parent_direc = parent_direc  # specify the parent directory where we will create new direc
-        # use f-strings to add in backslahes as directory separators 
+        # use f-strings to add in backslahes as directory separators
         backslashes_separator = "\\"
         # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
         new_path = f"{new_path}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
@@ -136,18 +141,18 @@ class Craigslist_Rentals(object):
             """ Create directory to contain scraped data, if path does not exist"""
             return os.makedirs(path_for_csv)
 
-    def export_to_csv(self, df: DataFrame, parent_direc_for_csv: str):
+    def export_to_csv(self, df: DataFrame, parent_direc_for_csv: str) -> csv:
         """Save df as CSV in the new path, sans index. Given the mk_direc...() function,
         we will save the CSV file inside the region and subregion subdirectories
         (but only specify parent directory containing all of the scraped data).
         Append today's date and region + subregion names to CSV file name."""
         # specify preface of CSV file name
         csv_preface_name = 'craigslist_rental'
-        # use f-strings to add in backslahes as directory separators 
+        # use f-strings to add in backslahes as directory separators
         backslashes_separator = "\\"
         # add region and subregion sub-directories to path where we will save the CSV file--NB: add in backslashes_separator to separate different sub-directories:
         path_for_csv = f"{parent_direc_for_csv}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
-        
+
         # append today's date and the .csv extension to suffix of CSV file name
         today_dt_str = datetime.date.today().strftime("%m_%d_%Y")  # get today's date in 'mm_dd_YYYY' format
         # specify underscore -- ie, '_' --as file name separator using f-strings
@@ -160,29 +165,29 @@ class Craigslist_Rentals(object):
         return df.to_csv(os.path.join(path_for_csv, csv_file_name), index=False)
 
 
-    def obtain_listing_data(self)->list:
+    def obtain_listing_data(self)-> dict:
         """Crawl over each page of rental listings, given starting URL from Craigslist_Rentals class. Obtain the URLs from each page's Craigslist rental listings. Then, parse the data of each 'inner' rental listing by accessing each of these URLs, and use xpath or class name selenium methods to scrape and parse various HTML elements (ie, the listing data that we want to scrape)."""
         #initialize empty lists that will contain the data we will scrape:
         listing_urls = []  # URLs for each rental listing
         cities = []    # city names
-        prices = []    # rental prices 
+        prices = []    # rental prices
         ids = []     # listing IDs
-        listing_descrip=[]   #  poster's text description of rental listing 
+        listing_descrip=[]   #  poster's text description of rental listing
         bedrooms = []    # number of bedrooms
         sqft = []    # size of rental in square feet
         bathrooms = []   # number of bathrooms
-        kitchen = []   # whether listing contains kitchen 
+        kitchen = []   # whether listing contains kitchen
         attr_vars =[]    # str comprising various rental attributes--electric vehicle charger, etc.
-        date_posted = []   # date on which listing was originally posted 
+        date_posted = []   # date on which listing was originally posted
 
         # crawl over each listings page, by looking for 'next' page buttons and clicking these after scraping the URLs of the inner listings. An exception will occur once the final page is reached since no additional 'next' page buttons will be present (and then, the webcrawler will iterate over and access each individual rental listing page)
         while True:
-            try: 
+            try:
                 """Iterate over listing URLS from each page of rental listings, given starting URL"""
 
                  ## scrape URLs for each rental listing on given page:
                 urls = self.web_driver.find_elements_by_xpath('//a[@class="result-title hdrlnk"]')
-                for url in urls:   # iterate over each rental listing's URL, and append to list 
+                for url in urls:   # iterate over each rental listing's URL, and append to list
                     listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
 
 
@@ -212,20 +217,20 @@ class Craigslist_Rentals(object):
                 ## remove any duplicate listing urls by assigning it to a list of OrderedDict.fromkeys() method, which will remove duplicate elements (urls) while also retaining the order of the list's elements.
                 listing_urls = list(OrderedDict.fromkeys(listing_urls))  # remove any duplicate listing urls
 
-                # wait a minimum of 8 seconds, but randomize the amount of time delay, in order to mimic a more human-like browser activity
+                ## specify amount of time delay in between GET requests--wait a minimum of 8 seconds, but randomize the amount of time delay, in order to mimic a more human-like browser activity
                 rand_sl_time = random.randrange(8, 15) # specify a range of pseudo-random values
 
                 ##  Iterate over each of the rental listing href URLs
-                # N = 12
+                # N = 12   # iterate over N number of rental listing URLs
 
                 for list_url in listing_urls:
-                # for list_url in itertools.islice(listing_urls, N):
+                # for list_url in itertools.islice(listing_urls, N):    # iterate up to N listings
                         """Ie: keep iterating over each url element of rental listings until a duplicate id is iterated on, in which case we should terminate the for loop. """
                         try:
                             # access the individual rental listings via the href URLs we have parsed:
                             self.web_driver.get(list_url)
 
-                        except (TimeoutException, ElementClickInterceptedException, NoSuchElementException, WebDriverException) as e:
+                        except (ElementClickInterceptedException, NoSuchElementException) as e:
                             """If a TimeoutException is encountered--e.g., if a rental listing posting has expired, then append 'nan' values for each list (aside from the listing_urls since this has already been populated) for that given listing, and move onto the remaining listing URLs remaining within the for loop. NB: An ElementClickInterceptedException exception occurs when the webdriver attempts to click an element that has the incorrect xpath. """
                             print(f"\n\nRental listing posting {list_url} has expired or webpage is not accessible since the webcrawler has encountered one of the following exceptions: a TimeoutException, NoSuchElementException, WebDriverException, or ElementClickInterceptedException. \n\n")
                             # input nan values for each scraped data list if given listing has been deleted or another issue has caused a TimeoutException error
@@ -239,6 +244,15 @@ class Craigslist_Rentals(object):
                             listing_descrip.append(nan_val) ##  listing descriptions
                             attr_vars.append(nan_val) # attribute data
                             date_posted.append(nan_val) #date_posted
+
+
+                        # terminate for loop if the user closes the webdriver browser--at any point of iteration--or if the internet connection is lost:
+                        except (WebDriverException, TimeoutException) as e:   # ie: if webdriver connection cannot be established
+                            print('\nNB: The WebDriver connection has been lost:')
+                            print('TShe internet connection has been lost or WebDriver browser has been closed,\nresulting in a WebDriverException and/or TimeoutException.')
+                            print('All previously scraped listings for this session will be saved and outputted to CSV.')
+                            break   #  break for loop
+ 
 
                         else:
                             """Ie: Run the webcraper functions (based on xpath or class name) *if* the given rental listing URL has not been deleted--ie, if none of the 4 denoted errors are encountered. What this means in practice is that the rental listing should be still be active and not deleted. So, we can proceed with scraping the data for the various variables. The xpath or class-name parsing functions will each implement a try...except to check for a NoSuchElementException in case a given rental listing is missing data for one or more of the attributes we want to scrape. """
@@ -258,8 +272,6 @@ class Craigslist_Rentals(object):
                             self.parse_html_via_xpath("/html/body/section/section/section/div[1]/p[1]/span[1]/b[2]", bathrooms)
 
                             ## Scrape sqft data:
-                            # self.parse_html_via_xpath("/html/body/section/section/h1/span/span[2]", sqft)
-
                             self.parse_html_via_xpath('//span[@class="housing"]', sqft)
 
                             ## Scrape listing descriptions (so we can obtain data on attributes & amenities such as kitchen, dishwasher, and refrigerator (ie, several amenities) data):
@@ -277,12 +289,16 @@ class Craigslist_Rentals(object):
                             print(f"Number of listings we have crawled over:\n{len(prices)}\n")
                             print(f"There are {len(listing_urls)-len(prices)} more listings left.")
 
-                            # keep iterating through each URL until the listing_urls list has been crawled over fully (ie, based on the number of listing ids) 
+
+                            # keep iterating through each URL until the listing_urls list has been crawled over fully (ie, based on the number of listing ids)
                             if len(ids) < len(listing_urls):  # If additional listings in the list have not been crawled on, then move on to the next rental listing in the listing_urls--ie, via pass command
-                                # provide delay to avoid being flagged by server as a bot, before we access each subsequent listing:
-                                time.sleep(rand_sl_time)
-                                pass # I.e.: move on to the next rental listing
-                            else:  # Ie: Once we have iterated through each listing URL, then immediately terminate the for loop."""
+
+                                    # provide delay to avoid being flagged by server as a bot, before we access each subsequent listing:
+                                    time.sleep(rand_sl_time)
+                                    pass # I.e.: move on to the next rental listing
+
+                            #  Once we have iterated through each listing URL element, then immediately terminate the for loop
+                            else:  
                                 break
 
                 ## Data cleaning and parsing of scraped lists-- bedroom, sqft, bathrooms, prices, etc.:
@@ -296,13 +312,13 @@ class Craigslist_Rentals(object):
                 # bathrooms data--
                 bathrooms = clean_scraped_bathroom_data(bathrooms)
 
-                # cities (ie, city names) data cleaning:
+                # cities (ie, city names):
                 cities = clean_scraped_cities_data(cities) # Remove all parantheses markings from each list element
 
                 # prices data cleaning:
                 prices = [p.lstrip("$") for p in prices]   # remove dollar signs
 
-                # data cleaning-- remove 'post id: ' prefix and parse out just the id values alone:
+                # listing ids-- remove 'post id: ' prefix:
                 ids = [i.lstrip('post id: ') if 'post id: ' in i else i for i in ids]  # remove 'post id: ' prefix
 
                 ## Parse kitchen data from listing descriptions:
@@ -311,35 +327,40 @@ class Craigslist_Rentals(object):
                 # provide date when webcrawler is run (ie, today's date when webcrawler is run), and impute these date data for *all* scraped records from the latest run of this webcrawler script  *I.e.: reference the len() of any one of the attributes that was scraped
                 date_of_webcrawler = [time.strftime("%Y-%m-%d")] * len(ids)  # impute today's date to all records that we scraped from the latest run of this webcrawler script
 
-                ## transform each list of scraped data to a dictionary of lists
+                ## transform each list of scraped data to a dictionary of lists:
                 dict_scraped_lists = {
                     'listing_urls':listing_urls, 'ids':ids, 'sqft':sqft, 'cities':cities, 'prices':prices,
                     'bedrooms':bedrooms, 'bathrooms':bathrooms, 'attr_vars':attr_vars, 'listing_descrip':listing_descrip,
                     'date_of_webcrawler':date_of_webcrawler,'kitchen':kitchen, 'date_posted':date_posted
                     }  # dictionary of the lists containing the scraped data
 
-                # return dictionary of the lists containing the scraped data  
+                # return dictionary of the lists containing the scraped data
                 return dict_scraped_lists
 
-    def dict_to_df_pipeline(self, dict_scraped_lists)->DataFrame:
+
+    def dict_to_df_pipeline(self, dict_scraped_lists) -> DataFrame:
         ## Transform the dictionary of lists to Pandas' dataframe (by using dictionary comprehension)
-        df_from_dict = pd.DataFrame({key:pd.Series(val) for key, val in dict_scraped_lists.items()})  #  transform dict of lists to a Pandas DataFrame--NB: transforming a dictionary of lists to a Pandas df is a bit faster than using .zip() on the untransformed lists, and then transforming to pandas df--namely: about 63% faster to use a list of dictionaries to dataframe.  
+        df_from_dict = pd.DataFrame({key:pd.Series(val) for key, val in dict_scraped_lists.items()})  #  transform dict of lists to a Pandas DataFrame--NB: transforming a dictionary of lists to a Pandas df is a bit faster than using .zip() on the untransformed lists, and then transforming to pandas df--namely: about 63% faster to use a list of dictionaries to dataframe.
 
         ## add name of region and subregion as new cols to df, using the parameters of the Craigslist_Rentals class
-        df_from_dict['region'] = f"{self.region}"    # add craigslist region (e.g., 'sfbay') as new col 
+        df_from_dict['region'] = f"{self.region}"    # add craigslist region (e.g., 'sfbay') as new col
         df_from_dict['sub_region'] = f"{self.subregion}"  # add craigslist subregion (e.g., 'sby') as new col
 
         ## data wrangling-- parse specific attributes (e.g., 'cats_OK') from the attr_vars and listing_descrip cols as indicator variables
-        # parse attributes and create indicator vars
         parse_attrs(df_from_dict) # NB: run parse_attrs() function comprising factored-out code from imported data cleaning script--ie, parse data as indicator variables for df_from_dict DataFrame
-        # clean number of bedrooms data for studio apt rental listings
-        df_from_dict['bedrooms'] = clean_bedroom_studio_apt_data(df_from_dict, 'listing_descrip', 'bedrooms') # clean bedrooms data 
-        ## Final sanity check on scraped data by printing from df_from_dict DataFrame:
+
+        # clean bedrooms data for studio apt rental listings:
+        df_from_dict['bedrooms'] = clean_bedroom_studio_apt_data(df_from_dict, 'listing_descrip', 'bedrooms') # clean bedrooms data
+
+        # clean & filter listing ids--remove all rows not containing valid listing ids (ie, 'nan')
+        df_from_dict = clean_listing_ids_and_remove_nan_substr(df_from_dict, 'ids', 'nan')  
+
+        ## Final sanity check on scraped data by printing DataFrame:
         print_scraped_sanity_checks(df_from_dict)
 
         return df_from_dict
 
-    def df_to_CSV_data_pipeline(self, df):
+    def df_to_CSV_pipeline(self, df) -> csv:
         """Clean specific subregions' city names data, create directory for given region and subregion, and export DataFrame containing scraped data to CSV within said subregion directory"""
         ## create directory to contain scraped data (if not exists):
         self.mk_direc_for_scraped_data("D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper", "scraped_data")
@@ -348,7 +369,6 @@ class Craigslist_Rentals(object):
         scraped_data_path = "D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data"
 
         ## clean data for specific subregions, and export scraped data from Dataframe to CSV file:
-
         if self.subregion is 'sfc':  # clean San Francisco data
             """If subregion is 'sfc', transform city names data from neighborhood names to 'San Francisco', and remove any data misclassified as being within this county."""
             df = clean_city_names_for_sf(sf_neighborhoods, df) # clean scraped data if scraped from 'sfc' subregion
@@ -371,13 +391,13 @@ class Craigslist_Rentals(object):
         elif self.subregion is 'eby':  # clean East Bay data
             """If subregion is 'eby', clean city names data for cities such as Oakland & Hayward."""
             df = clean_given_city_names_data('Oakland', oakland_neighborhoods, df) # clean Oakland data
-            df = clean_given_city_names_data('Hayward', hayward_neighborhoods, df)  # clean Hayward data                    
+            df = clean_given_city_names_data('Hayward', hayward_neighborhoods, df)  # clean Hayward data
             df = clean_given_city_names_data('Alameda', alameda_neighborhoods, df)  # clean Alameda data
             df = clean_given_city_names_data('Richmond', richmond_neighborhoods, df)  # clean Richmond dat
             self.export_to_csv(df, scraped_data_path)
             return df
 
-        else: 
+        else:
             """Ie: do not perform any additional data cleaning if subregion is not SF, Santa Cruz, South Bay, or East Bay--in other words, for North Bay or Peninsula data"""
             self.export_to_csv(df, scraped_data_path)
             return df
