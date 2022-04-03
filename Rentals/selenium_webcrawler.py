@@ -28,8 +28,8 @@ from selenium.webdriver.chrome.options import Options  # Options enables us to t
 from .clean_city_names import clean_city_names_for_sf, sf_neighborhoods, clean_given_city_names_data, sj_neighborhoods, oakland_neighborhoods, alameda_neighborhoods, hayward_neighborhoods, richmond_neighborhoods, santa_clara_neighborhoods  # import from same directory (ie,. dot prefix) functions to clean SF city names data and import lists of all neighborhoods for given cities--e.g., SF neighborhoods (including various abbreviations used on craigslist)
 from .clean_santa_cruz_data import clean_mislabelled_santa_cruz_data, san_cruz_cities  # import from same directory (ie,. dot prefix) a function to remove rows that are misclassified as 'scz', and import list of Santa Cruz county cities
 
-# import data cleaning script from the parent direc (*ie, scraper_and_data_cleaning_functions.py), which includes various data cleaning and HTML-parser functions via selenium methods:
-from scraper_and_data_cleaning_functions import clean_scraped_sqft_data, clean_scraped_bedroom_data, clean_scraped_bathroom_data, clean_scraped_cities_data, parse_kitchen_data,  parse_attrs, clean_bedroom_studio_apt_data, clean_listing_ids_and_remove_nan_substr, print_scraped_sanity_checks
+# import data cleaning script  from the data_cleaning sub-directory
+from data_cleaning.scraper_and_data_cleaning_functions import clean_scraped_sqft_data, clean_scraped_bedroom_data, clean_scraped_bathroom_data, clean_scraped_cities_data, parse_kitchen_data,  parse_attrs, clean_bedroom_studio_apt_data, clean_listing_ids_and_remove_nan_substr, print_scraped_sanity_checks # various data cleaning and HTML-parser functions via selenium methods:
 
 
 #define the Craigslist web scraper and web crawler, which we will use to scrape Craigslist SF Bay area rental listings data:
@@ -221,17 +221,17 @@ class Craigslist_Rentals(object):
                 rand_sl_time = random.randrange(8, 15) # specify a range of pseudo-random values
 
                 ##  Iterate over each of the rental listing href URLs
-                # N = 12   # iterate over N number of rental listing URLs
+                N = 5   # iterate over N number of rental listing URLs
 
-                for list_url in listing_urls:
-                # for list_url in itertools.islice(listing_urls, N):    # iterate up to N listings
+                # for list_url in listing_urls:
+                for list_url in itertools.islice(listing_urls, N):    # iterate up to N listings
                         """Ie: keep iterating over each url element of rental listings until a duplicate id is iterated on, in which case we should terminate the for loop. """
                         try:
                             # access the individual rental listings via the href URLs we have parsed:
                             self.web_driver.get(list_url)
 
                         except (ElementClickInterceptedException, NoSuchElementException) as e:
-                            """If a TimeoutException is encountered--e.g., if a rental listing posting has expired, then append 'nan' values for each list (aside from the listing_urls since this has already been populated) for that given listing, and move onto the remaining listing URLs remaining within the for loop. NB: An ElementClickInterceptedException exception occurs when the webdriver attempts to click an element that has the incorrect xpath. """
+                            """If a NoSuchElementException is encountered--e.g., if a rental listing posting has expired, then append 'nan' values for each list (aside from the listing_urls since this has already been populated) for that given listing, and move onto the remaining listing URLs remaining within the for loop. NB: An ElementClickInterceptedException exception occurs when the webdriver attempts to click an element that has the incorrect xpath. """
                             print(f"\n\nRental listing posting {list_url} has expired or webpage is not accessible since the webcrawler has encountered one of the following exceptions: a TimeoutException, NoSuchElementException, WebDriverException, or ElementClickInterceptedException. \n\n")
                             # input nan values for each scraped data list if given listing has been deleted or another issue has caused a TimeoutException error
                             nan_val = 'nan'  # specify nan value, which we will use to append to each of the lists as we attempt to scrape the data:

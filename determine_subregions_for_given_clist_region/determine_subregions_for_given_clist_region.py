@@ -31,13 +31,16 @@ for li in ul_subregions:
     # then, parse the text from the href element of each a and href element within the li's 
     li.text 
 
+    # sanity check
+    print(f'{li.text}')
+
 
 
 def main():
-    # NB: look up subregions for craigslist NYC:
-    NYC_homepage = 'https://newyork.craigslist.org/'
+    # NB: look up subregions for craigslist San Diego:
+    SD_homepage = 'https://sandiego.craigslist.org/'
 
-    parse_subregion_via_xpath(NYC_homepage, ul_subregions, craigslist_subregions)
+    parse_subregion_via_xpath(SD_homepage, ul_subregions, craigslist_subregions)
 
 
 if __name__=="__main__":
