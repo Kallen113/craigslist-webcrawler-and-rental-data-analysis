@@ -221,10 +221,10 @@ class Craigslist_Rentals(object):
                 rand_sl_time = random.randrange(8, 15) # specify a range of pseudo-random values
 
                 ##  Iterate over each of the rental listing href URLs
-                N = 5   # iterate over N number of rental listing URLs
+                # N = 5   # iterate over N number of rental listing URLs
 
-                # for list_url in listing_urls:
-                for list_url in itertools.islice(listing_urls, N):    # iterate up to N listings
+                for list_url in listing_urls:
+                # for list_url in itertools.islice(listing_urls, N):    # iterate up to N listings
                         """Ie: keep iterating over each url element of rental listings until a duplicate id is iterated on, in which case we should terminate the for loop. """
                         try:
                             # access the individual rental listings via the href URLs we have parsed:
