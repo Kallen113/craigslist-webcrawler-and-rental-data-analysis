@@ -360,7 +360,7 @@ class Craigslist_Rentals(object):
 
         return df_from_dict
 
-    def df_to_CSV_pipeline(self, df) -> csv:
+    def df_to_CSV_data_pipeline(self, df) -> csv:
         """Clean specific subregions' city names data, create directory for given region and subregion, and export DataFrame containing scraped data to CSV within said subregion directory"""
         ## create directory to contain scraped data (if not exists):
         self.mk_direc_for_scraped_data("D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper", "scraped_data")
