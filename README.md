@@ -38,6 +38,10 @@ pip install -r requirements.txt
 
 See below for a list of the main Python packages that we will need, although take note that the data analysis portion of the program--ie, the Phase 3--may vary depending on specific user demands and needs. For example, some individuals may not want to use ML models, in which case the sklearn library will clearly be unncessary. 
 
+4.) When you have finished using the webcrawler using a CLI such as PowerShell, use the deactivate command to turn off the virtual env:
+<<<
+deactivate
+
 ### Main Python packages for the webcrawler & scraper:
 
 Webcrawler, web scraping, and web access libraries & modules: 
