@@ -4,8 +4,6 @@ import csv
 import os
 import time
 import random
-import itertools
-from itertools import islice
 from collections import OrderedDict  # use to remove duplicates from rental listing urls list
 import datetime
 
@@ -22,7 +20,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options  # Options enables us to tell Selenium to open WebDriver browsers using maximized mode, and we can also disable any extensions or infobars
 
-# import functions for cleaning misclassified data or city names data that we need to rename, for SF and  Santa Cruz counties, respectively--ie, subregion of 'sfc' or 'scz', respectively
+# import functions for cleaning misclassified data or city names data that we need to rename (e.g., for SF and  Santa Cruz counties)
 # NB: since these scripts are from the same directory, we should use the '.file_name'--ie, dot prefix to specify we are importing from the same directory as this script:
 from .clean_city_names import clean_city_names_for_sf, sf_neighborhoods, clean_given_city_names_data, sj_neighborhoods, oakland_neighborhoods, alameda_neighborhoods, hayward_neighborhoods, richmond_neighborhoods, santa_clara_neighborhoods  # import from same directory (ie,. dot prefix) functions to clean SF city names data and import lists of all neighborhoods for given cities--e.g., SF neighborhoods (including various abbreviations used on craigslist)
 from .clean_santa_cruz_data import clean_mislabelled_santa_cruz_data, san_cruz_cities  # import from same directory (ie,. dot prefix) a function to remove rows that are misclassified as 'scz', and import list of Santa Cruz county cities
@@ -34,13 +32,13 @@ from data_cleaning.scraper_and_data_cleaning_functions import clean_scraped_sqft
 #define the Craigslist web scraper and web crawler, which we will use to scrape Craigslist SF Bay area rental listings data:
 class Craigslist_Rentals(object):
     """" Define a class that will enable us to perform a customized search for rental prices--within the SF Bay area--in which
-    we can perform a search for a specific region in the SF Bay area (e.g., "pen" refers to the pnensula region ), set the min & max values for the rental prices, the rental period (presumably as monthly), and the sale_date, which is the date on which the apartment or home will be availabile for consumers to move into. """
+    we can perform a search for a specific region in the SF Bay area (e.g., "pen" refers to the Peninsula region), set the min & max values for the rental prices, and specify the rental period (presumably as monthly) and the sale_date, which is the date on which the apartment or home will be availabile for consumers to move into. """
 
     def __init__(self, region: str, subregion: str, housing_category: str, min_price: int, max_price: int, rent_period: int, sale_date: str):
         """ Define the customized URL to search for rental listings within the SF Bay Area.
         This URL will be used to implement the selenium web scraper.
         Finally, initialize a selenium webdriver for the web crawler (Chrome in our case) and set the maxnumber of seconds we will allow as a delay in between when the GET request is sent via the web driver and the time in which the crawled webpage takes to load before starting a download for each given webpage."""
-        # define various parameters for a customized SF Bay Area Craigslist rental listing URL:
+        # define various parameters for a customized craigslist rental listing URL:
         self.region = region
         self.subregion = subregion
         self.housing_category = housing_category # NB: 'apa' will search for apartments and homes for rent (the intended data for this project). Other categories on craigslist are numerous, including real estate (for sale) homes by broker or by owner, respectively, etc.
@@ -51,8 +49,9 @@ class Craigslist_Rentals(object):
 
         ## Create customized URL for  specify each of the above parameters --using an f-string--to enable us to make a customized search of SF Bay Area rental listings on Craigslist
         self.url = f"https://{region}.craigslist.org/search/{subregion}/{housing_category}?/min_price={min_price}&max_price={max_price}&availabilityMode=0&rent_period={rent_period}&sale_date={sale_date}"
-        #sanity check the craigslist URL derived from the __init__() function:
-        print(f"The craigslist URL we will use to perform the web crawler is: \n{self.url}")
+        
+        # sanity check and print the starting craigslist URL for the web crawler (ie, the self.url derived from this __init__() method):
+        print(f"The craigslist URL we will use to perform the web crawler is:\n{self.url}")
 
         ## Initialize a Webdriver for selenium to implement the webcrawler:
         # driver_path = r"C:\webdrivers\chromedriver_win32.exe\chromedriver.exe" #specify path to webdriver
@@ -112,7 +111,7 @@ class Craigslist_Rentals(object):
         a.) Except if a ElementClickInterceptedException, NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--then wait until given HTML element has loaded on page using WebDriverWait() method.
         b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
 
-        # a.) wait until given HTML element has loaded
+        # wait until given HTML element has loaded
         try:
             wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 20 seconds to let HTML element load on given rental listing webpage
             wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 20 seconds
@@ -127,7 +126,7 @@ class Craigslist_Rentals(object):
         except (TimeoutException, NoSuchElementException, ElementClickInterceptedException, WebDriverException) as e:
             """If the given rental listing page does not contain given element, append 'nan' value to indicate missing value."""
             return list_to_append.append('nan')  # indicate missing value
-
+        # parse text from scraped HTML element, and append to given list
         return list_to_append.append(date_posted_click.text)  # parse text data from scraped html element, and append to list for given variable of interest
 
 
@@ -192,7 +191,6 @@ class Craigslist_Rentals(object):
                 for url in urls:   # iterate over each rental listing's URL, and append to list
                     listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
 
-
                 ## Navigate to each next page, by clicking the 'next' button located in the <a> tag:
                 next_page = WebDriverWait(self.web_driver, self.download_delay).until(
                     EC.element_to_be_clickable((By.XPATH, "//a[contains(text(),'next')]"))
@@ -224,10 +222,7 @@ class Craigslist_Rentals(object):
                 rand_sl_time = random.randrange(8, 15) # specify a range of pseudo-random values
 
                 ##  Iterate over each of the rental listing href URLs
-                # N = 5   # iterate over N number of rental listing URLs
-
                 for list_url in listing_urls:
-                # for list_url in itertools.islice(listing_urls, N):    # iterate up to N listings
                         """Ie: keep iterating over each url element of rental listings until a duplicate id is iterated on, in which case we should terminate the for loop. """
                         try:
                             # access the individual rental listings via the href URLs we have parsed:
@@ -306,8 +301,8 @@ class Craigslist_Rentals(object):
 
                 ## Data cleaning and parsing of scraped lists-- bedroom, sqft, bathrooms, prices, etc.:
 
-                # sqft data-- 1.) search for 'ft2' substring to indicate presence of sqft data. If this substring is found in given element, then parse the sqft data by removing the given substring and getting only the last element after splitting on whitespace so we can remove the bedroom data, which is always contained just before the sqft data. If sqft data does not exist, then return an 'nan' value instead to denote a null. When the function detects previous 'nan' values, leave unchanged as 'nan'.
-                sqft = clean_scraped_sqft_data(sqft)  # parse the sqft data, and ensure it's sqft data by checking if given listing element contains the substring 'ft2'
+                # clean the sqft data, and ensure it's sqft data by checking if given listing element contains the substring 'ft2'
+                sqft = clean_scraped_sqft_data(sqft)  
 
                 # bedrooms data cleaning--
                 bedrooms =  clean_scraped_bedroom_data(bedrooms)
