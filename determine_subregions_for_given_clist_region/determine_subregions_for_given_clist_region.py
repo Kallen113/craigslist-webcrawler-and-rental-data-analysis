@@ -64,10 +64,6 @@ def parse_subregion_via_xpath(craigslist_url_homepage, list_to_append: list, xpa
         """ Return error message if loading the webpage takes longer than the maximum n seconds:"""
         print(f"Loading the webpage's searchform element timed out: ie, it took longer than the  maximum number of {download_delay} seconds designated by the download_delay.")
 
-
-    # wait_until = WebDriverWait(craigslist_homepage_selenium, 10)  # wait up to 15 seconds to let HTML element load on given rental listing webpage
-    # wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 15 seconds
-
     # initialize empty list to contain the names of subregions
     craigslist_subregions = []  
 
