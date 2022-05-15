@@ -25,9 +25,12 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options  # Options enables us to tell Selenium to open WebDriver browsers using maximized mode, and we can also disable any extensions or infobars
 
+# inquirer library to add dropdowns and parse user input in terminal/command-line
+import inquirer
 
 
-def parse_subregion_via_xpath(craigslist_url_homepage, list_to_append: list, xpath_arg):
+
+def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->list:
     """ Scrape data from HTML element by looking up xpath (via selenium find_elements_by_xpath() method).
     a.) Initialize selenium WebDriver, and make get request to access given webpage
     b.) Wait until given HTML element has loaded on page using WebDriverWait() method.
@@ -70,26 +73,202 @@ def parse_subregion_via_xpath(craigslist_url_homepage, list_to_append: list, xpa
     # b.) scrape the HTML element, extract text, and append to given list
     for scraped_html in web_driver.find_elements_by_xpath(xpath_arg):
         craigslist_subregions.append(scraped_html.text)  # parse text data from scraped html element
-        # sanity check
-        print(f'{scraped_html.text}')
+
+    # separate each subregion code by separating each backslash 'delimiter', using .split() via list comp:
+    craigslist_subregions = [val.split() for val in craigslist_subregions]  # separate each str element by backslash delimiter using .split() method
+
+    # NB: .split() causes the list to become a list of lists, so we need to flatten the list:
+    # def flatten(l):
+
+    # flatten the list by looping over each element in list and using .extend() method
+    flattened = []  
+    for sublist in craigslist_subregions:  # iterate over each element in list
+        flattened.extend(sublist)   # flatten list via .extend() method
+
+    # assign the flattened list back to original list:
+    craigslist_subregions = list(flattened) 
+
+    # craigslist_subregions = [val.encode('unicode-escape').decode() for val in craigslist_subregions]
+
 
     # return scraped data as list
     return craigslist_subregions
 
 
-def main():
-    # NB: look up subregions for craigslist San Diego:
-    SD_homepage = 'https://sandiego.craigslist.org/'
+# enable user to select the craigslist region--ie, the parent regions--from dropdown list--in terminal/CLI--to implement the webcrawler on, before prompting user to select subregions (ie, child regions for given craigslist region)
+def prompt_user_for_region_and_return_region_name(region_vals:dict):
+    """Prompt user at command line terminal to select one of the metropolitan regions from a dropdown of region names (parsed from inputted dictionary).
+    Then, return the region URL & the craigslist URL corresponding to the selected region. """
+    ## NB: the main() function needs to supply a list of the region names--ie, region_vals argument
+    regions_lis = [
+        inquirer.List('clist_region',
+        message="What craigslist region would you like to scrape--NB: please select from the dropdown values?",
+        choices= region_vals,  # input the various subregions as the elements for the user to select from this list.
+        carousel=True  # allow user to scroll through list of values more seamlessly
+        ),
+        ]
+    region = inquirer.prompt(regions_lis) # prompt user to select one of the regions in command line, from the dropdown list defined above
+    region = region["clist_region"]
+
+    # sanity check:
+    # ensure correct region is being selected/parsed 
+    print(f'The region you selected is:{region}\n\n')
 
     
-    # initialize empty list to contain the names of subregions
-    craigslist_subregions = []
+    # return the region name & the URL corresponding to the selected region:
+    return region   # NB: we need to return the region, but we also need the URL--ie, the dict value-- of the given region name (ie, key) instead!
 
-    # specify xpath argument  
-    ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
+def return_hompeage_URL_for_given_region(region_vals:dict, region_name: str):
+    """Given the region the user selects via terminal, return the corresponding region's hompeage URL for craigslist."""
+    # sanity check
+    # ensure correct URL is being selected for given user selection of region (ie, key) of dict:
+    print(f'The craigslist URL for {region_name} is:\n{region_vals.get(region_name)}')
+
+    print(f'Data type of region_vals object val--ie, URL--is:{type(region_vals.get(region_name))}')
+
+    return region_vals.get(region_name) 
+
+# enable user to select subregion from dropdown to implement the webcrawler on:
+def prompt_user_for_subregion(subregion_vals):
+    ## NB: main.py needs to supply a list of the given subregion vals
+    # *For example: subregion_vals = ['eby', 'nby', 'pen', 'sby', 'sfc', 'scz']
+    subregions_lis = [
+        inquirer.List('clist_subregion',
+        message="What craigslist sub-region would you like to scrape--NB: please select from the dropdown values?",
+        choices=subregion_vals  # input the various subregions as the elements for the user to select from this list.
+        # carousel=True  # allow user to scroll through list of values more seamlessly
+        ),
+        ]
+    subregion = inquirer.prompt(subregions_lis) # prompt user to select one of the subregions in command line
+    subregion = subregion["clist_subregion"]
+    return subregion
 
 
-    parse_subregion_via_xpath(SD_homepage, craigslist_subregions, ul_subregions_xpath)
+def main():
+    #specify names of regions and their corresponding craigslist urls, store in dict
+    clist_region_and_urls = {
+        'SF Bay Area, CA':'https://sfbay.craigslist.org/',
+        'San Diego, CA':'https://sandiego.craigslist.org/',
+        'Chicago, IL':'https://chicago.craigslist.org/',
+        'Seattle, WA':'https://seattle.craigslist.org/',
+        'Tacoma, WA':'https://seattle.craigslist.org/tac/',
+        'Las Vegas, NV':'https://lasvegas.craigslist.org/',
+        'Los Angeles, CA':'https://losangeles.craigslist.org/',
+        'Phoenix, AZ':'https://phoenix.craigslist.org/',
+        'Portland, OR':'https://portland.craigslist.org/',
+        'Dallas/Fort Worth, TX':'https://dallas.craigslist.org/',
+        'Minneapolis/St. Paul, MN':'https://minneapolis.craigslist.org/',
+        'Boston, MA':'https://boston.craigslist.org/',
+        'Washington, D.C.':'https://washingtondc.craigslist.org/',
+        'Atlanta, GA':'https://atlanta.craigslist.org/',
+        'Miami, FL':'https://miami.craigslist.org/',
+        'Hawaii (subregions by island)':'https://honolulu.craigslist.org/',
+        'Detroit, MI':'https://detroit.craigslist.org/',
+        'New York City, NY':'https://newyork.craigslist.org/',
+        'Vancouver, Canada':'https://vancouver.craigslist.org/',
+        'Toronto, Canada':'https://toronto.craigslist.org/'
+        }
+    
+    # grab craigslist regions names (ie, the keys) of dict into a list
+    clist_region_names = list(clist_region_and_urls.keys())
+
+    # grab the corresponding craigslist domains for the regions (ie, the values) of dict into a list
+    clist_region_urls = list(clist_region_and_urls.values())
+
+    # prompt user at terminal/CLI to select one of the listed craigslist regions:
+    region_name  = prompt_user_for_region_and_return_region_name(clist_region_and_urls)
+
+    # return the corresponding craigslist hompage URL for the seleected region:
+    region_URL = return_hompeage_URL_for_given_region(clist_region_and_urls, region_name)
+
+    # Next, parse clist subregion (if needed):
+
+    if region_name != 'SF Bay Area, CA': # ie, if region is *not*  SF Bay Area, CA
+
+
+        # # remove SF Bay Area, CA url from the clist_region_and_urls dict, so the corresponding SF Bay subregions will not be parsed or selectable to user in terminal
+        # sfbay_url = 'https://sfbay.craigslist.org/' # url for SF Bay region
+        # clist_region_and_urls = {key: [y for y in val if sfbay_url not in y] for key, val in clist_region_and_urls.items()}  # remove SF Bay Area, CA url from the clist_region_urls list for sake of consistency & continuity
+
+        # run parse_subregions_via_xpath() function to parse craigslist subregion codes
+
+        # specify xpath argument needed to parse the clist subregion codes for a given (parent) region 
+        ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
+
+        # run parse_subregions_via_xpath() to parse subregion codes into a list, given the following args: region URLs list (ie, clist_region_urls), an empty list to be populated, and an xpath arg
+        subregions_list = parse_subregions_via_xpath(region_URL, ul_subregions_xpath)
+
+        # sanity check on list of subregions
+        print(f'Subregion vals for given region:\n{subregions_list}\n')
+
+        # select subregion val: ie, prompt user in terminal to select one of the subregions from the subregions_list:
+        subregion = prompt_user_for_subregion(subregions_list)  # select a subregion from the list of parsed subregion codes, and parse the value selected
+
+        # sanity check
+        print(f'Subregion selected:\n{subregion}')
+    
+    else:   # ie, user chose SF Bay Area, CA region
+        # # specify and print each SF Bay subregion manually    
+        # print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
+        ## Prompt user to select one of the Sf Bay subregions:
+        subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
+        # select subregion val: ie, prompt user in terminal to select one of the subregions:
+        subregion = prompt_user_for_subregion(subregion_vals)  # parse the specific value the user selected  
+
+        # sanity check
+        print(f'Subregion value selected:/n{subregion}')
+
+    # # NB: this is the original attempt at doing an if...else statement!!!:
+    # # if and only if a user picks a clist region that is *not* SF Bay, then run the parse_subregions_via_xpath() function
+    # if region != 'SF Bay Area, CA':  # ie, if region is *not*  SF Bay Area, CA
+
+    #     # remove SF Bay Area, CA url from the clist_region_urls list, so the corresponding SF Bay subregions will not be parsed or selectable to user in terminal
+    #     sfbay_url = 'https://sfbay.craigslist.org/' # url for SF Bay region
+    #     clist_region_urls = [val for val in clist_region_urls if val != sfbay_url]  # remove SF Bay Area, CA url from the clist_region_urls list for sake of consistency & continuity
+
+    #     # run parse_subregions_via_xpath() function to parse craigslist subregion codes
+
+    #     # initialize empty list to contain the names of subregions
+    #     craigslist_subregions = []
+
+    #     # specify xpath argument needed to parse the clist subregion codes for a given (parent) region 
+    #     ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
+
+    #     # run parse_subregions_via_xpath() to parse subregion codes into a list, given the following args: region URLs list (ie, clist_region_urls), an empty list to be populated, and an xpath arg
+    #     subregions_list = parse_subregions_via_xpath(clist_region_urls, craigslist_subregions, ul_subregions_xpath)
+
+    #     # select subregion val: ie, prompt user in terminal to select one of the subregions from the subregions_list:
+    #     subregion = inquirer_prompt_user_at_terminal(subregions_list)  # select a subregion from the list of parsed subregion codes, and parse the value selected
+
+    #     # sanity check
+    #     print(f'Subregion value selected:/n{subregion}')
+    
+    # else:   # ie, user chose SF Bay Area, CA region
+    #     # # specify and print each SF Bay subregion manually    
+    #     # print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
+    #     ## Prompt user to select one of the Sf Bay subregions:
+    #     subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
+    #     # select subregion val: ie, prompt user in terminal to select one of the subregions:
+    #     subregion = inquirer_prompt_user_at_terminal(subregion_vals)  # parse the specific value the user selected  
+
+    #     # sanity check
+    #     print(f'Subregion value selected:/n{subregion}')
+
+
+
+    ## original demo (* before May 2022 changes *) using main()
+    # # NB: look up subregions for craigslist San Diego:
+    # SD_homepage = 'https://sandiego.craigslist.org/'
+
+    
+    # # initialize empty list to contain the names of subregions
+    # craigslist_subregions = []
+
+    # # specify xpath argument  
+    # ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
+
+
+    # parse_subregions_via_xpath(SD_homepage, craigslist_subregions, ul_subregions_xpath)
 
 
 if __name__=="__main__":
