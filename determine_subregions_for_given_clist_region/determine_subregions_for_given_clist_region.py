@@ -27,6 +27,9 @@ from selenium.webdriver.chrome.options import Options  # Options enables us to t
 # inquirer library to add dropdowns and parse user input in terminal/command-line
 import inquirer
 
+# import functions to delineate & parse SF Bay subregions:
+from sfbay_craigslist_subregion_definitions import print_sfbay_subregion_names, inquirer_prompt_user_at_terminal
+
 def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->list:
     """ Scrape data from HTML element by looking up xpath (via selenium find_elements_by_xpath() method).
     a.) Initialize selenium WebDriver, and make get request to access given webpage
@@ -189,14 +192,14 @@ def main():
         print(f'Subregion selected:\n{subregion}')
     
     else:   # ie, user chose SF Bay Area, CA region
-        # print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
+        print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
         ## specify each Sf Bay subregion:
-        subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
+        sfbay_subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
         # select subregion val: ie, prompt user in terminal to select one of the subregions:
-        subregion = prompt_user_for_subregion(subregion_vals)  # parse the specific value the user selected  
+        subregion = inquirer_prompt_user_at_terminal(sfbay_subregion_vals)  # parse the specific value the user selected  
 
         # sanity check
-        print(f'Subregion value selected:/n{subregion}')
+        print(f'Subregion value selected:\n{subregion}')
 
 
 if __name__=="__main__":
