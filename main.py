@@ -6,18 +6,84 @@ from Rentals.clean_santa_cruz_data import clean_mislabelled_santa_cruz_data, san
 
 # import inquirer library so we can prompt user in command line to select from a dropdown of values to select the desired subregion on which we will implement the webcrawler.
 import inquirer
-from sfbay_craigslist_subregion_definitions import print_sfbay_subregion_names, inquirer_prompt_user_at_terminal
+
+# import functions for selecting SF Bay Area region & subregion names and codes:
+from determine_subregions_for_given_clist_region.sfbay_craigslist_subregion_definitions import print_sfbay_subregion_names, inquirer_prompt_user_at_terminal
+
+# import functions for selecting *non-SF Bay* metropolitan regions & subregions-- e.g., Chicago, IL, Seattle, WA, etc.
+from determine_subregions_for_given_clist_region.determine_subregions_for_given_clist_region import prompt_user_for_region_and_return_region_name, return_hompeage_URL_for_given_region, parse_region_code_for_craigslist_URL_main_webcrawler, parse_subregions_via_xpath,  prompt_user_for_subregion 
 
 
 def main():
-    ## Specify the arguments we will use for each component of the Craigslist_Rentals class, so that we will scrape data for the given region, subregion, etc.
-    # search for rental listings located in specific subregion of the SF Bay Area:
-    region = 'sfbay'  # ie, search SF Bay Area (sfbay region) data 
-    ## Prompt user to select one of several possible subregions:
-    print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
-    subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
-    subregion = inquirer_prompt_user_at_terminal(subregion_vals)  # parse the specific value the user selected  
+    ## Specify the arguments we will use for each component of the Craigslist_Rentals class, so that we will scrape rental data for the given region, subregion, etc.
 
+    # specify names of metropolitan craigslist region names and their corresponding craigslist urls, store in dict
+    clist_region_and_urls = {
+        'SF Bay Area, CA':'https://sfbay.craigslist.org/',
+        'San Diego, CA':'https://sandiego.craigslist.org/',
+        'Chicago, IL':'https://chicago.craigslist.org/',
+        'Seattle, WA':'https://seattle.craigslist.org/',
+        # 'Tacoma, WA':'https://seattle.craigslist.org/tac/',
+        'Los Angeles, CA':'https://losangeles.craigslist.org/',
+        'Phoenix, AZ':'https://phoenix.craigslist.org/',
+        'Portland, OR':'https://portland.craigslist.org/',
+        'Dallas/Fort Worth, TX':'https://dallas.craigslist.org/',
+        'Minneapolis/St. Paul, MN':'https://minneapolis.craigslist.org/',
+        'Boston, MA':'https://boston.craigslist.org/',
+        'Washington, D.C.':'https://washingtondc.craigslist.org/',
+        'Atlanta, GA':'https://atlanta.craigslist.org/',
+        'Miami, FL':'https://miami.craigslist.org/',
+        'Hawaii (subregions by island)':'https://honolulu.craigslist.org/',
+        'Detroit, MI':'https://detroit.craigslist.org/',
+        'New York City, NY':'https://newyork.craigslist.org/',
+        'Vancouver, Canada':'https://vancouver.craigslist.org/',
+        'Toronto, Canada':'https://toronto.craigslist.org/'
+        }
+    
+    # Prompt user for region:
+    region_name  = prompt_user_for_region_and_return_region_name(clist_region_and_urls) #  Prompt user to select specific region on craigslist to search, from terminal, among the various listed metropolitan areas in the U.S. and Canada:
+
+    # return hompage URL for the selected region, which we will use to parse corresponding subregion codes
+    region_URL = return_hompeage_URL_for_given_region(clist_region_and_urls, region_name) # return hompage URL for region, which we will use to parse corresponding subregion codes
+
+    # specify region craigslist code, for webcrawler's starting URL-- parse the region_URL to craigslist region codes:
+    region = parse_region_code_for_craigslist_URL_main_webcrawler(region_URL)  # use split() method to parse the region code from the region_URL of the selected region!
+    # region = region_URL.split('//')[1].split('.')[0]  # use split() method to parse *just* the region code from the region_URL of the selected region!
+
+    # Next, parse clist subregion (if needed), and prompt user to select a subregion corresponding to the selected region:
+
+    # if selected region is *not* SF Bay Area, CA, we will need to parse the subregion codes for given (parent) region:
+    if region_name != 'SF Bay Area, CA': 
+
+        # specify xpath argument needed to parse the clist subregion codes for a given (parent) region 
+        ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
+
+        # run parse_subregions_via_xpath() to parse subregion codes into a list, given the following args: region URLs list (ie, clist_region_urls), an empty list to be populated, and an xpath arg
+        subregions_list = parse_subregions_via_xpath(region_URL, ul_subregions_xpath)
+
+        # sanity check on list of subregions
+        print(f'Subregion vals for given region:\n{subregions_list}\n')
+
+        # select subregion val: ie, prompt user in terminal to select one of the subregions from the subregions_list:
+        subregion = prompt_user_for_subregion(subregions_list)  # select a subregion from the list of parsed subregion codes, and parse the value selected
+
+        # sanity check
+        print(f'Subregion selected:\n{subregion}')
+    
+    # if user chose SF Bay Area, CA region, we can manually supply the relevant subregion codes and names:
+    else:
+        # rename SF Bay Area, CA to 
+        print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
+        ## specify each Sf Bay subregion:
+        sfbay_subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
+        # select subregion val: ie, prompt user in terminal to select one of the subregions:
+        subregion = inquirer_prompt_user_at_terminal(sfbay_subregion_vals)  # parse the specific value the user selected  
+        
+
+        # sanity check
+        print(f'Subregion value selected:\n{subregion}')
+
+     
     ## filter housing category to 'apa'-ie, rental listings (apartments & housing for rent)
     housing_category = 'apa'
     ## filter min & max rental price to avoid scraping unusual rental listings:
@@ -29,7 +95,7 @@ def main():
     sale_date = "all+dates" # look up all current craigslist rental listings for given location, price range, and monthly rental periods: ie, regardless of when the listing will be available for moving into.
     
     # given above arguments, initialize a customized craigslist rental listing URL via the Craigslist_Rentals class, for the selenium webcrawler to access:
-    craigslist_crawler = Craigslist_Rentals(region,subregion, housing_category, min_price, max_price, rent_period, sale_date)
+    craigslist_crawler = Craigslist_Rentals(region, subregion, housing_category, min_price, max_price, rent_period, sale_date)
 
     #access the URL via selenium Chrome webdriver: 
     craigslist_crawler.load_craigslist_form_URL()

@@ -27,8 +27,8 @@ from selenium.webdriver.chrome.options import Options  # Options enables us to t
 # inquirer library to add dropdowns and parse user input in terminal/command-line
 import inquirer
 
-# import functions to delineate & parse SF Bay subregions:
-from sfbay_craigslist_subregion_definitions import print_sfbay_subregion_names, inquirer_prompt_user_at_terminal
+# # import functions to delineate & parse SF Bay subregions:
+from .sfbay_craigslist_subregion_definitions import print_sfbay_subregion_names, inquirer_prompt_user_at_terminal
 
 def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->list:
     """ Scrape data from HTML element by looking up xpath (via selenium find_elements_by_xpath() method).
@@ -74,19 +74,22 @@ def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->li
     for scraped_html in web_driver.find_elements_by_xpath(xpath_arg):
         craigslist_subregions.append(scraped_html.text)  # parse text data from scraped html element
 
+    
+    # close the WebDriver browser, since we are done using it
+    web_driver.close()
+
     # separate each subregion code by separating each backslash 'delimiter', using .split() via list comp:
     craigslist_subregions = [val.split() for val in craigslist_subregions]  # separate each str element by backslash delimiter using .split() method
 
     # NB: .split() causes the list to become a list of lists, so we need to flatten the list:
-    # def flatten(l):
 
-    # flatten the list by looping over each element in list and using .extend() method
-    flattened = []  
+    # flatten the list by looping over each sublist in list of lists and using .extend() method on each 'sublist'
+    flatten_lis = []  
     for sublist in craigslist_subregions:  # iterate over each element in list
-        flattened.extend(sublist)   # flatten list via .extend() method
+        flatten_lis.extend(sublist)   # flatten list via .extend() method
 
     # assign the flattened list back to original list:
-    craigslist_subregions = list(flattened) 
+    craigslist_subregions = list(flatten_lis) 
 
     # return scraped data as list of subregion codes:
     return craigslist_subregions
@@ -124,6 +127,10 @@ def return_hompeage_URL_for_given_region(region_vals:dict, region_name: str):
     print(f'Data type of region_vals object val--ie, URL--is:{type(region_vals.get(region_name))}')
 
     return region_vals.get(region_name) 
+
+def parse_region_code_for_craigslist_URL_main_webcrawler(region_URL):
+    """From the region_URL--which is given by the user's selection of the region_name, use .split() method to parse the region code for the given URL, which we will supply as an arg to the Craigslist_Rentals class's init() method, from the selenium_webcrawler.py (ie, the main webcrawler script!!)."""
+    return region_URL.split('//')[1].split('.')[0]
 
 # enable user to select subregion from dropdown to implement the webcrawler on:
 def prompt_user_for_subregion(subregion_vals):
