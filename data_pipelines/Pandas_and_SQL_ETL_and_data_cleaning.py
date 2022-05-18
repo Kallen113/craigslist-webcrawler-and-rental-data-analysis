@@ -10,19 +10,56 @@ from pandas.core.frame import DataFrame
 import pyodbc
 # use json library to open a json file, which contains SQL credentials & configuration--ie, username, password, etc.
 import json 
+# inquirer library to prompt user for region:
+import inquirer
 
 ## Data pipeline of Pandas' df to SQL Server -- import scraped craigslist rental listings data from CSV files to single Pandas' df: 
 
+# 
+def prompt_user_to_specify_region_to_update(region_codes):
+    regions_lis = [
+        inquirer.List('clist_region',
+        message="What craigslist region would you like to scrape--NB: please select from the dropdown values?",
+        choices= region_codes,  # input the various subregions as the elements for the user to select from this list.
+        carousel=True  # allow user to scroll through list of values more seamlessly
+        ),
+        ]
+    region = inquirer.prompt(regions_lis) # prompt user to select one of the regions in command line, from the dropdown list defined above
+    region = region["clist_region"]
+
+    # print the region code that was selected
+    print(f'The region you selected is:\n{region}\n\n')
+
+    # return the region name & the URL corresponding to the selected region:
+    return region   # NB: we need to return the region, but we also need the URL--ie, the dict value-- of the given region name (ie, key) instead!
+
+def return_hompeage_URL_for_given_region(region_vals:dict, region_name: str):
+    """Given the region the user selects via terminal, return the corresponding region's hompeage URL for craigslist."""
+    # return the value of the corresponding key--ie, return the URL for the given region
+    return region_vals.get(region_name)  # return URL for given region
+
+
+def parse_region_code_from_craigslist_URL(region_URL):
+    """From the region_URL--which is given by the user's selection of the region_name, use .split() method to parse the region code for the given URL, which we will supply as an arg to the Craigslist_Rentals class's init() method, from the selenium_webcrawler.py (ie, the main webcrawler script!!)."""
+    return region_URL.split('//')[1].split('.')[0]
+
 # recursively search parent direc to look up CSV files within subdirectories
-def recursively_import_all_CSV_and_concat_to_single_df(parent_direc, fn_regex=r'*.csv'):
-    """Recursively search parent directory, and look up all CSV files.
+def recursively_import_all_CSV_and_concat_to_single_df(parent_direc:str, region_code: str, fn_regex=r'*.csv'):
+    """Recursively search directory of scraped data for given region, and look up all CSV files.
     Then, import all CSV files to a single Pandas' df using pd.concat()"""
     path =  parent_direc # specify parent path of directories containing the scraped rental listings CSV data -- NB: use raw text--as in r'path...', or can we use the double-back slashes to escape back-slashes??
-    df_concat = pd.concat((pd.read_csv(file, # import each CSV file from directory
-                                        sep=',',encoding = 'utf-8'  # assume standard CSV (ie, comma separated ) formt and use utf-8 encoding
+    # use backslashes to separate the parent direc from the region code
+    backslashes_separator = "\\\\"
+    # add *region code* to parent direc so we can recursively search the scraped data for that specific region:
+    path = f'{path}{backslashes_separator}{region_code}' # add region code to path
+
+    # recursively search path for CSV files, and concat to single DataFrame:
+    df_concat = pd.concat((pd.read_csv(file, # import each CSV file
+                                        sep=',', encoding = 'utf-8'  # assume standard CSV (ie, comma separated) format and use utf-8 encoding
                                         ) for file in glob.iglob( # iterate over each CSV file in path
                                             os.path.join(path, '**', fn_regex), 
                                             recursive=True)), ignore_index=True)  # recursively iterate over each CSV file in path, and use os.path.join to help ensure this concatenation is OS independent
+
     return df_concat
 
 # 2.) Determine latest data of scraped data inserted into SQL table 
@@ -308,11 +345,44 @@ def remove_col_with_given_starting_name(df, col_starting_name: str):
 
 
 def main():
-    # # 1) Import all scraped rental listings data -- NB: in our case, we have various SF Bay Area listings data
-    scraped_data_path = r"D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data\\sfbay"
-    df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_path)
-    print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check-examine size of dataset, columns, etc.
+    # specify names of metropolitan craigslist region names and their corresponding craigslist urls, store in dict
+    clist_region_and_urls = {
+        'SF Bay Area, CA':'https://sfbay.craigslist.org/',
+        'San Diego, CA':'https://sandiego.craigslist.org/',
+        'Chicago, IL':'https://chicago.craigslist.org/',
+        'Seattle, WA':'https://seattle.craigslist.org/',
+        # 'Tacoma, WA':'https://seattle.craigslist.org/tac/',
+        'Los Angeles, CA':'https://losangeles.craigslist.org/',
+        'Phoenix, AZ':'https://phoenix.craigslist.org/',
+        'Portland, OR':'https://portland.craigslist.org/',
+        'Dallas/Fort Worth, TX':'https://dallas.craigslist.org/',
+        'Minneapolis/St. Paul, MN':'https://minneapolis.craigslist.org/',
+        'Boston, MA':'https://boston.craigslist.org/',
+        'Washington, D.C.':'https://washingtondc.craigslist.org/',
+        'Atlanta, GA':'https://atlanta.craigslist.org/',
+        'Miami, FL':'https://miami.craigslist.org/',
+        'Hawaii (subregions by island)':'https://honolulu.craigslist.org/',
+        'Detroit, MI':'https://detroit.craigslist.org/',
+        'New York City, NY':'https://newyork.craigslist.org/',
+        'Vancouver, Canada':'https://vancouver.craigslist.org/',
+        'Toronto, Canada':'https://toronto.craigslist.org/'
+        }
 
+    # prompt user to select which region for updating the database:
+    region_name = prompt_user_to_specify_region_to_update(clist_region_and_urls)
+
+    region_URL = return_hompeage_URL_for_given_region(clist_region_and_urls, region_name)
+
+    # prase region code from homepage url of selected region:
+    region_code = parse_region_code_from_craigslist_URL(region_URL)
+
+    # # 1) Import all scraped rental listings data from given region:
+    scraped_data_parent_path = r"D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data"
+
+    df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_parent_path, region_code)
+
+    # sanity check on imported data
+    print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check-examine size of dataset, columns, etc.
 
     ## 2) Determine the last date of listings data stored in SQL table, so we can filter the dataset before inserting the data:
 

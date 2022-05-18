@@ -86,7 +86,7 @@ def main():
      
     ## filter housing category to 'apa'-ie, rental listings (apartments & housing for rent)
     housing_category = 'apa'
-    ## filter min & max rental price to avoid scraping unusual rental listings:
+    ## filter min & max rental price to avoid scraping unusual otn misclassified rental listings:
     min_price = 50 # filter out all unusual rental listings that do not specify rental price in the title of the listing--ie, the 'postingtitle' h1 (which are displated as $0 in when searching on craigslist)  
     max_price = 12000 # filter out all listings that have very high prices, since many of these listings are mislabelled and are oftentimes actually property lots for sale (even though we are searching for apartment-specific listings)   
     # filter rental period to monthly, to ensure rental prices are readily comparable:
@@ -100,8 +100,8 @@ def main():
     #access the URL via selenium Chrome webdriver: 
     craigslist_crawler.load_craigslist_form_URL()
 
-    # implement the main web crawler and scrape the rental listings' data:
-    dict_scraped_lists = craigslist_crawler.obtain_listing_data()  # scrape data, and store data as DataFrame
+    # implement the main web crawler and scrape the rental listings' data, and store data as dict of lists:
+    dict_scraped_lists = craigslist_crawler.obtain_listing_data()  
     # transform the dictionary of lists to Pandas' DataFrame:
     df = craigslist_crawler.dict_to_df_pipeline(dict_scraped_lists)
 
