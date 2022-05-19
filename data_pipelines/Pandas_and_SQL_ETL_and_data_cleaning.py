@@ -15,7 +15,7 @@ import inquirer
 
 ## Data pipeline of Pandas' df to SQL Server -- import scraped craigslist rental listings data from CSV files to single Pandas' df: 
 
-# 
+# prompt user--via terminal-- to specify which region to update database via newest scraped data 
 def prompt_user_to_specify_region_to_update(region_codes):
     regions_lis = [
         inquirer.List('clist_region',
@@ -429,13 +429,14 @@ def main():
 
     ## clean split city names and clean abbreviated or incorrect city names:
     # specify various address and street name that we need to remove from the city names
-    address_criteria = ['Boulevard', 'Blvd', 'Road', 'Rd', 'Avenue', 'Ave', 'Street', 'St', 'Drive', 'Dr', 'Real', 'E Hillsdale Blvd'] 
+    address_criteria = ['Boulevard', 'Blvd', 'Road', 'Rd', 'Avenue', 'Ave', 'Street', 'St', 'Drive', 'Dr', 'Real', 'E Hillsdale Blvd', 'Ln', '-brookview', 'Lincoln Hill-'] 
 
     # specify various extraneous neighborhood names such as 'Downtown' 
     neighborhood_criteria = ['Downtown', 'Central/Downtown', 'North', 'California', 'Ca.', 'Bay Area', 'St. Helena', 'St', 'nyon', 
     'Jack London Square', 'Walking Distance To', 'El Camino', 'Mendocino County', 'San Mateo County', 'Alameda County', 'Rio Nido Nr', 'Mission Elementary', 
     'Napa County', 'Golden Gate', 'Jennings', 'South Lake Tahoe', 'Tahoe Paradise', 'Kingswood Estates', 'South Bay', 'Skyline', 'San Antonio Tx', 
-    'East Bay', 'Morton Dr', 'Cour De Jeune'] 
+    'East Bay', 'Morton Dr', 'Cour De Jeune', 
+    'West End', 'Wikiup', 'Rotary Way', 'Old City', 'Greenwich Cir. Fremont', 'Mission District'] 
 
     # specify what delimiters we want to search for to unsplit the split city names data:
     split_city_delimiters =  [',', '/', ' - ', '_____', '#']
@@ -448,7 +449,8 @@ def main():
 
     # specify dictionary of city names that are mispelled after having removed various street and neighborhood substrings:
     cities_that_need_extra_cleaning = {'. Helena': 'St. Helena', '. Helena Deer Park': 'St. Helena', 'San Los':'San Carlos', 'Tro Valley':'Castro Valley', 'Rohnert Pk':'Rohnert Park',
-    'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon', 'Millbrae On The Burlingame Border':'Millbrae', 'Ockton Ca': 'Stockton', '. Rohnert Park': 'Rohnert Park', 'Udio Behind Main House':'', '***---rohnert Park':'Rohnert Park'}
+    'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon', 'Millbrae On The Burlingame Border':'Millbrae', 'Ockton Ca': 'Stockton', '. Rohnert Park': 'Rohnert Park', 'Udio Behind Main House':'', '***---rohnert Park':'Rohnert Park',
+    'Meadow Ridge Cir':'San Jose', 'Irvington High Area':'Fremont', 'Interlaken-watsonville':'Interlaken', 'Dimond District':'Oakland', 'Apt':''}
 
     # clean city names data:
     df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
