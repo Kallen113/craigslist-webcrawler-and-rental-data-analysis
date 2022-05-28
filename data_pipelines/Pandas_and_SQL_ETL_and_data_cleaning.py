@@ -19,7 +19,7 @@ import inquirer
 def prompt_user_to_specify_region_to_update(region_codes):
     regions_lis = [
         inquirer.List('clist_region',
-        message="What craigslist region would you like to scrape--NB: please select from the dropdown values?",
+        message="What craigslist region would you like to use to update the database--NB: please select from the dropdown values?",
         choices= region_codes,  # input the various subregions as the elements for the user to select from this list.
         carousel=True  # allow user to scroll through list of values more seamlessly
         ),

@@ -102,7 +102,7 @@ def prompt_user_for_region_and_return_region_name(region_vals:dict):
     ## NB: the main() function needs to supply a list of the region names--ie, region_vals argument
     regions_lis = [
         inquirer.List('clist_region',
-        message="What craigslist region would you like to scrape--NB: please select from the dropdown values?",
+        message="\nWhat craigslist region would you like to scrape--NB: please select from the dropdown values?",
         choices= region_vals,  # input the various subregions as the elements for the user to select from this list.
         carousel=True  # allow user to scroll through list of values more seamlessly
         ),
@@ -112,7 +112,7 @@ def prompt_user_for_region_and_return_region_name(region_vals:dict):
 
     # sanity check:
     # ensure correct region is being selected/parsed 
-    print(f'The region you selected is:{region}\n\n')
+    print(f'The region you selected is:  {region}\n\n')
 
     
     # return the region name & the URL corresponding to the selected region:
