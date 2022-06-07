@@ -28,7 +28,7 @@ def prompt_user_to_specify_region_to_update(region_codes):
     region = region["clist_region"]
 
     # print the region code that was selected
-    print(f'The region you selected is:\n{region}\n\n')
+    print(f'The region you selected is:\n{region}\n')
 
     # return the region name & the URL corresponding to the selected region:
     return region   # NB: we need to return the region, but we also need the URL--ie, the dict value-- of the given region name (ie, key) instead!
@@ -126,7 +126,7 @@ class SQL_Database:
             )
         
         except pyodbc.Error as err:  # account for possible pyodbc SQL Server connection error
-            print("Python (via pyodbc driver) was not able to connect to SQL Server database. Please double-check username and other configuration credentials, and try again.") 
+            print("Python (via pyodbc driver) was not able to connect to SQL Server database.\nPlease double-check username and other configuration credentials, and try again.") 
 
         # initialize cursor so we can execute SQL code
         cursor = conn.cursor() 
@@ -367,6 +367,7 @@ def main():
         'Vancouver, Canada':'https://vancouver.craigslist.org/',
         'Toronto, Canada':'https://toronto.craigslist.org/'
         }
+    
 
     # prompt user to select which region for updating the database:
     region_name = prompt_user_to_specify_region_to_update(clist_region_and_urls)
@@ -379,10 +380,16 @@ def main():
     # # 1) Import all scraped rental listings data from given region:
     scraped_data_parent_path = r"D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data"
 
-    df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_parent_path, region_code)
+    try:   
+        # attempt to import and concat scraped data for given region:
+        df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_parent_path, region_code)
 
-    # sanity check on imported data
-    print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check-examine size of dataset, columns, etc.
+        # sanity check on imported data
+        print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check-examine size of dataset, columns, etc.
+
+    except ValueError:   # account for potential Valueerror--ie, if there is *no* available scraped data for the given region
+        print("\nSorry, there is no data available for the selected region.\n")
+
 
     ## 2) Determine the last date of listings data stored in SQL table, so we can filter the dataset before inserting the data:
 
