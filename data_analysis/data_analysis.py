@@ -100,9 +100,9 @@ sql_config_path = "D:\\Coding and Code projects\\Python\\craigslist_data_proj\\C
 SQL_db = SQL_Database(sql_config_path)  # NB: be sure to pass in path to the json SQL configuration file so we can load in the needed username, password, and configuration data to be able to access the SQL database
 
 
-## import SQL rental table data to Pandas' df, with price >$100:
+## import SQL rental table data to Pandas' df, with price >$100, and select *only*  SF Bay data:
 # specify query to import data
-query_for_import = "SELECT * FROM rental WHERE price > 100;"
+query_for_import = "SELECT * FROM rental WHERE price > 100 AND region = 'sfbay';"
 # import data to DataFrame via SQL query
 df = SQL_db.import_SQL_to_df(query_for_import)
 print(f"Rental data imported from SQL table:\n{df.info()}") # sanity check
