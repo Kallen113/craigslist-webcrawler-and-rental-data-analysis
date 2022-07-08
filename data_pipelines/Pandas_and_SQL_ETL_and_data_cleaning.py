@@ -74,15 +74,15 @@ class SQL_Database:
         self.database = config['database']
         self.username = config['username']
         self.password = config['password']
-        print(f"Sanity check on database name (ie, based on the json configurations file:\n{self.database}")# sanity check
+        print(f"\nSanity check on database name (ie, based on the json configuration file:\n{self.database}\n")  # sanity check
 
     # 2 a) Perform SQL query on date_posted col to determine the most recent date of data stored in the table  
-    def determine_latest_date(self, query):
-        """Calculate the most recent date of rental listings data that we have inserted into the SQL rental table"""
+    def determine_latest_date(self, region_code: str):
+        """Calculate the most recent date of rental listings data that we have inserted into the SQL rental table, for given craigslist region"""
         try:  # try to establish connection to SQL Server table via pyodbc connector
             conn = pyodbc.connect(
             f'DRIVER={self.driver};'
-            f'SERVER={self.server};'
+            f'SERVER={self.server};' 
             f'DATABASE={self.database};'
             f'UID={self.username};'
             f'PWD={self.password};'
@@ -90,24 +90,23 @@ class SQL_Database:
             )
         
         except pyodbc.Error as err:  # account for possible pyodbc SQL Server connection error
-            print("Python was not able to connect to SQL server database and. Please try again.") 
+            print("We were not able to connect to the SQL server database properly. Please double-check config.json and try again.") 
 
         # initialize cursor so we can execute SQL code
         cursor = conn.cursor() 
 
         # specify SQL query
-        query = query 
+        query = "SELECT MAX(date_posted) AS latest_date FROM rental WHERE region = ?;"  # check latest date of stored listings data, for given region 
 
-        # perform query, and convert query results to Pandas' df
-        max_date = pd.read_sql(query, conn)
+        # perform query, and convert query results to Pandas' df, with respect to given region (eg, sfbay)
+        max_date = pd.read_sql(sql = query, con = conn, params =(region_code,))   # NB!: we need to pass the region_code str argument as a tuple to satisfy .read_sql() method's API for the params parameter!
 
         cursor.close()
         conn.close()
 
         ## sanity check:
-        print(f"Latest date of scraped data inserted into the SQL table:\n{max_date}")
+        print(f"\nLatest date of scraped data inserted into the SQL table:\n{max_date}")
         return max_date
-
 
 
     # 5.) insert filtered and cleaned pandas' df into SQL table
@@ -377,6 +376,9 @@ def main():
     # prase region code from homepage url of selected region:
     region_code = parse_region_code_from_craigslist_URL(region_URL)
 
+    # sanity check on region code:
+    print(f'\nRegion code: {region_code}\n')
+
     # # 1) Import all scraped rental listings data from given region:
     scraped_data_parent_path = r"D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data"
 
@@ -399,9 +401,12 @@ def main():
     SQL_db = SQL_Database(sql_config_path)  # NB: initialize class and pass in path to the json SQL configuration file 
     
     ## 2a.) specify query to select the latest date based on date_posted:
-    sql_query = "SELECT MAX(date_posted) AS latest_date FROM rental;"
-    # determine last date of listings records stored in SQL table
-    latest_date = SQL_db.determine_latest_date(sql_query)
+    # sql_query = "SELECT MAX(date_posted) AS latest_date FROM rental;"
+    # determine last date of listings records stored in SQL table, **for given region**
+    # latest_date = SQL_db.determine_latest_date(sql_query, region_code)
+
+    latest_date = SQL_db.determine_latest_date(region_code)
+
 
     ## 2) b.) Transform query results to string:
 
