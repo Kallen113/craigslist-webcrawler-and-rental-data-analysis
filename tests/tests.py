@@ -20,6 +20,15 @@ class Tests(unittest.TestCase):
         self.assertTrue(df['date_posted'].duplicated().any())  # ensure there are no duplicate URLs
         pass
 
+    
+    def test_scraped_data_exists_for_given_region_for_ETL_to_SQL_pipeline(self, df):
+        """Ensure that--when user selects given region for ETL data pipeline--at least *some* data has been scraped"""
+        self.assertTrue(
+            len(df.index) > 0 # ensure that number of rows is greater than 0  
+        )
+
+        pass
+
 if __name__=='main':
     unittest.main()
  

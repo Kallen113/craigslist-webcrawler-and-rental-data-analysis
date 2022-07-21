@@ -15,7 +15,9 @@ import inquirer
 
 ## Data pipeline of Pandas' df to SQL Server -- import scraped craigslist rental listings data from CSV files to single Pandas' df: 
 
-# prompt user--via terminal-- to specify which region to update database via newest scraped data 
+# 1) Prompt user to select region in which update database via newest scraped data , and then import all scraped data for given region
+
+# 1a) prompt user--via terminal-- to specify which region to update database via newest scraped data 
 def prompt_user_to_specify_region_to_update(region_codes):
     regions_lis = [
         inquirer.List('clist_region',
@@ -38,12 +40,12 @@ def return_hompeage_URL_for_given_region(region_vals:dict, region_name: str):
     # return the value of the corresponding key--ie, return the URL for the given region
     return region_vals.get(region_name)  # return URL for given region
 
-
+# 1b) Parse region code from user's region selection
 def parse_region_code_from_craigslist_URL(region_URL):
     """From the region_URL--which is given by the user's selection of the region_name, use .split() method to parse the region code for the given URL, which we will supply as an arg to the Craigslist_Rentals class's init() method, from the selenium_webcrawler.py (ie, the main webcrawler script!!)."""
     return region_URL.split('//')[1].split('.')[0]
 
-# recursively search parent direc to look up CSV files within subdirectories
+# 1c) Import all available recursively search parent direc to look up CSV files within subdirectories
 def recursively_import_all_CSV_and_concat_to_single_df(parent_direc:str, region_code: str, fn_regex=r'*.csv'):
     """Recursively search directory of scraped data for given region, and look up all CSV files.
     Then, import all CSV files to a single Pandas' df using pd.concat()"""
@@ -61,6 +63,20 @@ def recursively_import_all_CSV_and_concat_to_single_df(parent_direc:str, region_
                                             recursive=True)), ignore_index=True)  # recursively iterate over each CSV file in path, and use os.path.join to help ensure this concatenation is OS independent
 
     return df_concat
+
+# 1d) Verify whether *any* data have been scraped for given region 
+def verify_scraped_data_exists_for_region(df, region_codes):
+    # check if at least 1 row of scraped data exists
+    if len(df.index) > 0:
+        print("\nScraped data for region exists. ETL pipeline can proceed.\n")
+
+    else: # no scraped data are available for selected region
+        print("\nPlease select another region from dropdown\n")
+
+        # prompt user to select *another* region,  which actually does contain scraped data
+        prompt_user_to_specify_region_to_update(region_codes)
+
+
 
 # 2.) Determine latest data of scraped data inserted into SQL table 
 class SQL_Database:
@@ -386,8 +402,11 @@ def main():
         # attempt to import and concat scraped data for given region:
         df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_parent_path, region_code)
 
+        # 
+        print("\nScraped data for region exists. ETL pipeline can proceed\n")
+
         # sanity check on imported data
-        print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check-examine size of dataset, columns, etc.
+        print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check: examine size of dataset, columns, etc.
 
     except ValueError:   # account for potential Valueerror--ie, if there is *no* available scraped data for the given region
         print("\nSorry, there is no data available for the selected region.\n")
