@@ -71,6 +71,18 @@ python -m main
 Why use a Python module? The reason we are using main.py as a module is that we are importing several scripts, including a Python class, to be used for the webcrawler program. If we merely ran main.py as a script, the program would not work since we would not be able to import and use a Python class and all needed functions imported from other scripts.   
 
 
+## A Brief Note About the Regions and subregions that this Webcrawler Project Focuses on: 
+
+The focus of this project is on SF Bay Area rental listings (ie, for the sfbay craigslist site) data, but the webcrawler and webscraping functions and scripts can be fairly easily adapted to crawl over data from other regions and metropolitan areas, such as NYC, Seattle, etc. 
+
+## What if I Want to Examine Rental Listings from Metropolitan Areas Outside of the SF Bay Area?
+
+The main.py script--assuming we run the program as a Python module (as described above)--prompts the user via command-line to select one of 18 metropolitan regions (including the SF Bay Area). After selecting the metropolitan region, the user will then be prompted to select a subregion-- for example, district of columbia is a subregion within the Washington, DC (parent) region. 
+
+Here's a partial list of (parent) metropolitan regions:
+
+SF Bay Area, CA; San Diego, CA; Chicago, IL; Seattle, WA, Boston, MA, etc.
+
 ## Project File Structure:
 
 What exactly is the file structure used for this project?
@@ -95,9 +107,6 @@ For the data cleaning and ETL data pipeline, the script first imports one or mor
 
 For data cleaning, I rely primarily on the Pandas and numpy libraries, exploiting vectorized methods where possible, to clean the data. After performing several data cleaning procedures and functions, such as deduplicating listings data and transforming specific columns to specific data types, the program then implements the data pipeline. Namely, we start with the CSV files  I employ the pyodbc library to enable Python to interact with a MS SQL Server database. After creating a SQL table and cleaning the rental listings data, the scripts will insert the data from a Pandas' DataFrame into the SQL Server table. ETL of scraped data. 
 
-## A Brief Note About the Regions and subregions that this Webcrawler Project Focuses on: 
-
-The focus of this project is on SF Bay Area rental listings (ie, for the sfbay craigslist site) data, but the webcrawler and webscraping functions and scripts can be fairly easily adapted to crawl over data from other regions and metropolitan areas, such as NYC, Seattle, etc. 
 
 ## Possible Use Cases:
 
