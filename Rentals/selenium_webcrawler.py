@@ -67,7 +67,7 @@ class Craigslist_Rentals(object):
             ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library
             options=options  # implement the various options specified above
             )
-        self.download_delay = 25   # set maximum download delay of 25 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
+        self.download_delay = 50   # set maximum download delay of 50 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
 
 
     def load_craigslist_form_URL(self):
@@ -81,10 +81,10 @@ class Craigslist_Rentals(object):
             WebDriverWait(self.web_driver, self.download_delay).until(
                 EC.presence_of_element_located((By.ID, "searchform"))
             )  # NB: you need to use a tuple as the argument of the selenium EC.presence_of_element_located() function, hence the double-parantheses
-            print('\nPage has loaded, and the data are ready to download.\n')
+            print('\nPage has loaded, and we can start scraping the data.\n')
         except TimeoutException:
             # Return error message if loading the webpage takes longer than the maximum n seconds
-            print(f"Loading the webpage's searchform element timed out: ie, it took longer than the  maximum number of {self.download_delay} seconds designated by the download_delay.")
+            print(f"\nLoading the webpage's searchform element timed out: ie, it took longer than the maximum number of {self.download_delay} seconds designated by the download_delay argument.\n")
 
 
     def parse_html_via_xpath(self, xpath_arg: str, list_to_append: list) -> list:
@@ -93,7 +93,7 @@ class Craigslist_Rentals(object):
         b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
         try:
             # a.) wait until given HTML element has loaded
-            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 20 seconds to let HTML element load on given rental listing webpage
+            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
             wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 20 seconds
             # b.) scrape the HTML element, extract text, and append to given list
             scraped_html = self.web_driver.find_element_by_xpath(xpath_arg)
@@ -113,7 +113,7 @@ class Craigslist_Rentals(object):
 
         # wait until given HTML element has loaded
         try:
-            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 20 seconds to let HTML element load on given rental listing webpage
+            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
             wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 20 seconds
             # b.) scrape the HTML element, extract text, and append to given list
             date_posted_click = self.web_driver.find_element_by_xpath(xpath_arg)
@@ -182,40 +182,169 @@ class Craigslist_Rentals(object):
         attr_vars =[]    # str comprising various rental attributes--electric vehicle charger, etc.
         date_posted = []   # date on which listing was originally posted
 
-        # crawl over each page of listings, by looking for 'next' page buttons and clicking these after scraping the URLs of the inner listings. An exception will occur once the final page is reached since no additional 'next' page buttons will be present (and then, the webcrawler will iterate over and access each individual rental listing page)
-        while True:
-            try:
+        # initialize empty dictionary to contain each list of scraped data
+        dict_scraped_lists = {}
 
-                 ## scrape URLs for each rental listing on given page:
-                urls = self.web_driver.find_elements_by_xpath('//a[@class="result-title hdrlnk"]')
-                for url in urls:   # iterate over each rental listing's URL, and append to list
-                    listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
+        # crawl over each page of listings, by looking for 'next' page buttons and clicking these after scraping the URLs of the inner listings. An exception will occur once the final page is reached since no additional 'next' page buttons will be present (and then, the webcrawler will iterate over and access each individual rental listing page)
+        
+
+        """                
+        # *** 
+        # NB!:
+        # On August 17, 2022, craigslist updated their website *for the sfbay region only (thus far)*, and the next page buttons need to be re-referenced for any such sfbay webcrawlers
+        # ***
+        """
+        ## scrape URLs for each rental listing on given page:
+
+        # check if urls list contains only unique values--else, if there are duplicates, we can deduce the last page has been reached
+        while True:
+            # wait until the first inner listing's href URL has been loaded on the given page:
+            xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2]'  # xpath to 1st inner listing hrefs
+
+            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
+            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+
+            # b.) scrape the HTML element, extract text, and append to given list 
+
+            # specify url xpath
+            # urls = self.web_driver.find_elements_by_xpath('//*[@id="search-results-page-1"]')
+
+            urls = self.web_driver.find_elements_by_xpath('//a[@class="post-title"]')
+
+
+            # urls = self.web_driver.find_elements_by_id('search-results-page-1')
+
+
+            # urls = self.web_driver.find_elements_by_xpath('//*[@id="search-results-page-1"]/ol/li[2]/div/a[2]')
+            
+            
+
+            # # # inner listing page's href url xpaths
+            # # # 1st (on page)
+            # # //*[@id="search-results-page-1"]/ol/li[1]/div/a[2]/span
+
+            # # # 2nd (on page)
+            # # //*[@id="search-results-page-1"]/ol/li[2]/div/a[2]/span
+
+            # # # rd
+            # # //*[@id="search-results-page-1"]/ol/li[3]/div/a[2]/span
+
+            # # # 4th
+            # # //*[@id="search-results-page-1"]/ol/li[4]/div/a[2]
+
+
+            # # #
+            # # //*[@id="search-results-page-1"]/ol/li[6]/div/a[2]/span
+
+            # urls = self.web_driver.find_elements_by_xpath('//a[@class="result-title hdrlnk"]')
+                            
+            # /html/body/div[2]/main/div[2]/div[4]/ol/li[2]/div/a[2]/span                
+            
+            for url in urls:   # iterate over each rental listing's URL, and append to list 
+                listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
+
+            # sanity check on scraped urls:
+            print(f'\nThe scraped rental listings urls--thus far-- are:{listing_urls}\n\n')
+
+            print(f'The number of scraped rental listing urls are:{len(listing_urls)}\n')
+
+            
+            try:
+                # if len(listing_urls) == len(set(listing_urls)):  # check that there are no duplicate urls in urls list (ie, url hrefs for the rental listings pages)
+
+                ## Navigate to each next page, by clicking the 'next page' button located in a div tag with id 'search-toolbars-1':
+                # next_page = self.web_driver.find_element_by_xpath('//*[@id="search-toolbars-1"]/div[2]/button[3]')
+
+                # # reference the class name, which is the same for each clickable next page button--ie, it will have the same class name until the *final* page is reached:
+                next_page = self.web_driver.find_element_by_xpath('//*[@class="bd-button cl-next-page icon-only"]')   # this class name will remain the same until 
+
+
+                ## # NB: the *last* page's next page button is greyed out, and the class name is different:
+                ## <button type="button" tabindex="0" class="bd-button cl-next-page icon-only"> 
+                
+                # next_page = WebDriverWait(self.web_driver, self.download_delay).until(
+                #     EC.element_to_be_clickable((By.XPATH, '//*[@id="search-toolbars-1"]/div[2]/button[3]'))
+                #     )  # wait until 'next page' button element is clickable
+                
+                # sanity check on next_page button HTML
+                print(f'\n\nNext page button--parsed HTML (sanity check) is:{next_page}\n')
+
+
+                # ***NB!***: the full HTML element corresponding to the next page button should be as follows: 
+                # <button type="button" tabindex="0" class="bd-button cl-next-page icon-only bd-disabled"><span class="icon icom-"></span><span class="label">next page</span></button>
+
+
+                
+                # # check whether next page button is disabled, indicating we are on the final page of listings: 
+                # if 'bd-button cl-next-page icon-only bd-disabled' in next_page.get_attribute('class'):   # check for final page of listings, as indicated by 
+                #     break
+
+                # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
+                self.web_driver.execute_script("arguments[0].click();", next_page) 
+                print("\nNavigating to the next page of rental listings\n")
+
+
+                # NB: alternate xpaths that might be correct for the new next page button:
+                #  next_page = "//*[@id="search-toolbars-1"]/div[2]/button[3]"
+                
+                #  //*[@id="searchform"]/div[3]/div[3]/span[2]/a[3]
+
+
+
+                # /html/body/div[2]/main/div[2]/div[1]/div[2]/button[3]
+
 
                 ## Navigate to each next page, by clicking the 'next' button located in the <a> tag:
-                next_page = WebDriverWait(self.web_driver, self.download_delay).until(
-                    EC.element_to_be_clickable((By.XPATH, "//a[contains(text(),'next')]"))
-                    )  # wait until 'next page' button element is clickable
-                self.web_driver.execute_script("arguments[0].click();", next_page) # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
-                print("\nNavigating to the next page of rental listings\n")
+
+                # ## NB!: this reference is now incorrect since craigslist updated the way next pages are clicked onto--ie, for sfbay region as of Aug 17, 2022!!
+                # next_page = WebDriverWait(self.web_driver, self.download_delay).until(
+                #     EC.element_to_be_clickable((By.XPATH, "//a[contains(text(),'next')]"))
+                #     )  # wait until 'next page' button element is clickable
+                # self.web_driver.execute_script("arguments[0].click();", next_page) # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
+                # print("\nNavigating to the next page of rental listings\n")
                 
                 # wait n seconds before accessing the next page, but randomize the amount of time delay, in order to mimic more human-like browser activity
                 rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
                 time.sleep(rand_sl_time) # wait minimum of 1 second to let the page's various HTML contents to load, before we start extracting the various data on each subsequent page.
                 print(f"\nNew page's URL:\n{self.web_driver.current_url}\n\n")
+            
+                # else: # ie, last page has been reached since there *are* duplicate urls that have been scraped/encountered by webcrawler 
+
+                    # # NB: if 1 of the following 2 exceptions occur, we will stop the while loop from navigating to the next page, since the last page will have been reached
+                    # except (NoSuchElementException) as e:
+
+                    # NB: if 1 of the following 3 exceptions occur, we will stop the while loop from navigating to the next page, since the last page will have been reached
+                    # except (TimeoutException, WebDriverException, NoSuchElementException) as e:
 
             # NB: if 1 of the following 3 exceptions occur, we will stop the while loop from navigating to the next page, since the last page will have been reached
-            except (TimeoutException, WebDriverException, NoSuchElementException) as e:
+            except (NoSuchElementException, ElementClickInterceptedException) as e:
+
+                # except (TimeoutException, WebDriverException, NoSuchElementException) as e:
                 """ Parse last page's data:"""
+                
                 # indicate that the last page has been reached
                 print("Last page reached")
+                """ Parse last page's data:"""
+                
+                ## scrape URLs for each rental listing on final page:
+                xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2]'  # xpath to 1st inner listing hrefs
 
-                ## scrape URLs for each rental listing on given page:
-                urls = self.web_driver.find_elements_by_xpath('//a[@class="result-title hdrlnk"]')
+                wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
+                wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+
+           
+                # specify url xpath
+                
+                # urls = self.web_driver.find_elements_by_xpath('//*[@id="search-results-page-1"]')
+                
+                urls = self.web_driver.find_elements_by_xpath('//a[@class="post-title"]')
+
+                
                 for url in urls:   # iterate over each listing URL on page, and extract href URL
                     listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
 
 
-                ## remove any duplicate listing urls by assigning it to a list of OrderedDict.fromkeys() method, which will remove duplicate elements (urls) while also retaining the order of the list's elements.
+                # ## remove any duplicate listing urls by assigning it to a list of OrderedDict.fromkeys() method, which will remove duplicate elements (urls) while also retaining the order of the list's elements.
                 listing_urls = list(OrderedDict.fromkeys(listing_urls))  # remove any duplicate listing urls
 
                 ## specify amount of time delay in between GET requests--wait a minimum of 8 seconds, but randomize the amount of time delay, in order to mimic a more human-like browser activity
@@ -228,7 +357,9 @@ class Craigslist_Rentals(object):
                             # access the individual rental listings via the href URLs we have parsed:
                             self.web_driver.get(list_url)
 
-                        except (ElementClickInterceptedException, NoSuchElementException) as e:
+                        # except (ElementClickInterceptedException, NoSuchElementException) as e:
+                        except (ElementClickInterceptedException) as e:
+
                             """If a NoSuchElementException is encountered--e.g., if a rental listing posting has expired, then append 'nan' values for each list (aside from the listing_urls since this has already been populated) for that given listing, and move onto the remaining listing URLs remaining within the for loop. NB: An ElementClickInterceptedException exception occurs when the webdriver attempts to click an element that has the incorrect xpath. """
                             print(f"\n\nRental listing posting {list_url} has expired or webpage is not accessible since the webcrawler has encountered one of the following exceptions: a TimeoutException, NoSuchElementException, WebDriverException, or ElementClickInterceptedException. \n\n")
                             # input nan values for each scraped data list if given listing has been deleted or another issue has caused a TimeoutException error
@@ -245,12 +376,14 @@ class Craigslist_Rentals(object):
 
 
                         # terminate for loop if the user closes the webdriver browser--at any point of iteration--or if the internet connection is lost:
-                        except (WebDriverException, TimeoutException) as e:   # ie: if webdriver connection cannot be established
+                        # except (WebDriverException, TimeoutException) as e:   # ie: if webdriver connection cannot be established
+                                                
+                        except (WebDriverException) as e:   # ie: if webdriver connection cannot be established
                             print('\nNB: The WebDriver connection has been lost:')
                             print('The internet connection has been lost or WebDriver browser has been closed,\nresulting in a WebDriverException and/or TimeoutException.')
                             print('\nAll previously scraped listings for this session will be saved and outputted to CSV.')
                             break   #  break for loop, and proceed to data cleaning and data pipelines
- 
+
 
                         else:
                             """Ie: Run the webcraper functions (based on xpath or class name) *if* the given rental listing URL has not been deleted--ie, if none of the 4 denoted errors are encountered. What this means in practice is that the rental listing should be still be active and not deleted. So, we can proceed with scraping the data for the various variables. The xpath or class-name parsing functions will each implement a try...except to check for a NoSuchElementException in case a given rental listing is missing data for one or more of the attributes we want to scrape. """
@@ -299,38 +432,38 @@ class Craigslist_Rentals(object):
                             else:  
                                 break
 
-                ## Data cleaning and parsing of scraped lists-- bedroom, sqft, bathrooms, prices, etc.:
+                        ## Data cleaning and parsing of scraped lists-- bedroom, sqft, bathrooms, prices, etc.:
 
-                # clean the sqft data, and ensure it's sqft data by checking if given listing element contains the substring 'ft2'
-                sqft = clean_scraped_sqft_data(sqft)  
+                        # clean the sqft data, and ensure it's sqft data by checking if given listing element contains the substring 'ft2'
+                        sqft = clean_scraped_sqft_data(sqft)  
 
-                # bedrooms data cleaning--
-                bedrooms =  clean_scraped_bedroom_data(bedrooms)
+                        # bedrooms data cleaning--
+                        bedrooms =  clean_scraped_bedroom_data(bedrooms)
 
-                # bathrooms data--
-                bathrooms = clean_scraped_bathroom_data(bathrooms)
+                        # bathrooms data--
+                        bathrooms = clean_scraped_bathroom_data(bathrooms)
 
-                # cities (ie, city names):
-                cities = clean_scraped_cities_data(cities) # Remove all parantheses markings from each list element
+                        # cities (ie, city names):
+                        cities = clean_scraped_cities_data(cities) # Remove all parantheses markings from each list element
 
-                # prices data cleaning:
-                prices = [p.lstrip("$") for p in prices]   # remove dollar signs
+                        # prices data cleaning:
+                        prices = [p.lstrip("$") for p in prices]   # remove dollar signs
 
-                # listing ids-- remove 'post id: ' prefix:
-                ids = [i.lstrip('post id: ') if 'post id: ' in i else i for i in ids]  # remove 'post id: ' prefix
+                        # listing ids-- remove 'post id: ' prefix:
+                        ids = [i.lstrip('post id: ') if 'post id: ' in i else i for i in ids]  # remove 'post id: ' prefix
 
-                ## Parse kitchen data from listing descriptions:
-                kitchen = parse_kitchen_data(kitchen, listing_descrip)
+                        ## Parse kitchen data from listing descriptions:
+                        kitchen = parse_kitchen_data(kitchen, listing_descrip)
 
-                # provide date when webcrawler is run (ie, today's date when webcrawler is run), and impute these date data for *all* scraped records from the latest run of this webcrawler script  *I.e.: reference the len() of any one of the attributes that was scraped
-                date_of_webcrawler = [time.strftime("%Y-%m-%d")] * len(ids)  # impute today's date to all records that we scraped from the latest run of this webcrawler script
+                        # provide date when webcrawler is run (ie, today's date when webcrawler is run), and impute these date data for *all* scraped records from the latest run of this webcrawler script  *I.e.: reference the len() of any one of the attributes that was scraped
+                        date_of_webcrawler = [time.strftime("%Y-%m-%d")] * len(ids)  # impute today's date to all records that we scraped from the latest run of this webcrawler script
 
-                ## transform each list of scraped data to a dictionary of lists:
-                dict_scraped_lists = {
-                    'listing_urls':listing_urls, 'ids':ids, 'sqft':sqft, 'cities':cities, 'prices':prices,
-                    'bedrooms':bedrooms, 'bathrooms':bathrooms, 'attr_vars':attr_vars, 'listing_descrip':listing_descrip,
-                    'date_of_webcrawler':date_of_webcrawler,'kitchen':kitchen, 'date_posted':date_posted
-                    }  # dictionary of the lists containing the scraped data
+                        ## transform each list of scraped data to a dictionary of lists:
+                        dict_scraped_lists = {
+                            'listing_urls':listing_urls, 'ids':ids, 'sqft':sqft, 'cities':cities, 'prices':prices,
+                            'bedrooms':bedrooms, 'bathrooms':bathrooms, 'attr_vars':attr_vars, 'listing_descrip':listing_descrip,
+                            'date_of_webcrawler':date_of_webcrawler,'kitchen':kitchen, 'date_posted':date_posted
+                            }  # dictionary of the lists containing the scraped data
 
                 # return dictionary of the lists containing the scraped data
                 return dict_scraped_lists
