@@ -2,22 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 
-def clean_scraped_sqft_data(sqft_list):
-    sqf_substr = 'ft'
-    return [val.split(sqf_substr)[0].split(' ')[-1] if sqf_substr in val else 'nan' for val in sqft_list]  # parse the sqft data, and ensure it's sqft data by checking if given listing element contains the substring 'ft' 
-
-
-# bedrooms data cleaning
-def clean_scraped_bedroom_data(bedroom_list):
-    bed_substr = 'br'
-    return [val.split(bed_substr)[0].split(' ')[-1] if bed_substr in val else 'nan' for val in bedroom_list]  # parse the bedrooms data, and ensure it's bedroom data by checking if given listing element contains the substring 'br' 
-
-
-# bathrooms data cleaning
-def clean_scraped_bathroom_data(bathroom_list):
-    bath_substr = 'Ba'
-    return [val[:-2] if bath_substr in val else 'nan' for val in bathroom_list]  
-
+## Perform data cleaning directly on specific lists before transforming the lists into a dictionary of lists:
 
 # cities (ie, city names) data cleaning:
 def clean_scraped_cities_data(cities_list):
@@ -38,6 +23,31 @@ def parse_kitchen_data(kitchen_list, listing_descrip):
     # parse whether listing mentions that it includes a kitchen
     kitchen_list =  [1 if kitchen_substr in el else 0 if no_kitchen_substr in el else 0 for el in listing_descrip]
     return kitchen_list
+
+## Perform data cleaning on specific lists within the dictionary of lists containing the scraped data:
+
+## sqft data cleaning
+def clean_scraped_sqft_data(dict_scraped_lists):
+    """Clean data *after* all data has been scraped and contained within a *dictionary of lists*, not the initial lists! """
+    sqf_substr = 'ft'
+    return [val.split(sqf_substr)[0].split(' ')[-1] if sqf_substr in val else 'nan' for val in dict_scraped_lists['sqft']]  # parse the sqft data, and ensure it's sqft data by checking if given listing element contains the substring 'ft' 
+
+
+# bedrooms data cleaning
+def clean_scraped_bedroom_data(dict_scraped_lists):
+    bed_substr = 'BR'
+    # return [val.split(bed_substr)[0].split(' ')[-1] if bed_substr in val else 'nan' for val in bedroom_list]  # parse the bedrooms data, and ensure it's bedroom data by checking if given listing element contains the substring 'br' 
+    return [val.strip().split('/')[0].strip().rsplit(bed_substr,1)[0] if bed_substr in val else 'nan' for val in dict_scraped_lists['bedrooms']]  # remove whitespace, then split based on backslash delimiter, index to 1st element, remove whitespace, and remove bed_substr from list
+
+
+# bathrooms data cleaning
+def clean_scraped_bathroom_data(dict_scraped_lists):
+    bath_substr = 'Ba'
+    # return [val[:-2] if bath_substr in val else 'nan' for val in bathroom_list]  
+    return [val.strip().split('/')[1].strip().rsplit(bath_substr,1)[0] if bath_substr in val else 'nan' for val in dict_scraped_lists['bathrooms']]  # remove whitespace, then split based on backslash delimiter, index to 2nd element, remove whitespace, and remove bath_substr from list
+
+
+
 
 ## Create indicator variables using numpy and Pandas' str.contains() based on scraped rental listing attributes and descriptions  
 def indicator_vars_from_scraped_data(df, col_to_parse, attr_substr):

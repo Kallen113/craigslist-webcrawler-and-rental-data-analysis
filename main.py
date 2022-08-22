@@ -100,9 +100,16 @@ def main():
     #access the URL via selenium Chrome webdriver: 
     craigslist_crawler.load_craigslist_form_URL()
 
-    # implement the main web crawler and scrape the rental listings' data, and store data as dict of lists:
-    dict_scraped_lists = craigslist_crawler.obtain_listing_data()  
-    # transform the dictionary of lists to Pandas' DataFrame:
+    # implement the main web crawler and obtain the rental listing href URLs from the pages of listings: 
+    listing_urls = craigslist_crawler.obtain_listing_urls()
+
+    # scrape the rental listings' data, and store data as dict of lists:
+    dict_scraped_lists = craigslist_crawler.scrape_listing_data(listing_urls)  
+
+    # Perform data cleaning on scraped data:
+    dict_scraped_lists = craigslist_crawler.clean_scraped_data(dict_scraped_lists)
+    
+    # transform the dictionary of lists to Pandas' DataFrame, and peform additional data cleaning and wrangling:
     df = craigslist_crawler.dict_to_df_pipeline(dict_scraped_lists)
 
     # Execute DataFrame to CSV data pipeline,after cleaning city names data for specific subregions 

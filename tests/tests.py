@@ -6,8 +6,26 @@ import numpy as np
 # and numpy: <https://stackoverflow.com/questions/41852686/how-do-you-unit-test-python-dataframes> 
 
 
-# perform tests on the cleaned rental listings data, before loading into 
+
+
 class Tests(unittest.TestCase):
+
+    ## perform tests on the scraped data immediately after running the main webcrawler via main.py
+    def test_for_attributes_with_ONLY_missing_data_and_possibly_incorrect_xpaths(self, df):
+        """Check whether any of the scraped attributes--ie, number of bedrooms, etc.--are containing *only* missing data (ie, all rows are 'nan'), which would likely indicate *incorrect* xpath references!!"""
+        # look up rows in which there are missing bedroom values--ie, equal to 'nan'
+        missing_vals_brs = df[df['bedrooms'].str.contains('nan')]
+        # count number of 'nan' vals--ie, mssing values--for scraped bedrooms attribute column:
+        missing_vals_brs_count = len(missing_vals_brs)
+
+        # verify whether *all* bedroom col rows contain *only* missing (ie, 'nan') values
+        # in other words: determine whether the total number of rows is equal to the number of rows with 'nan' (missing) values:
+        self.assertFalse(missing_vals_count = len(df['bedrooms']))   # return False--ie, a failed test--if all rows contain nan, indicating xpath for webscraper needs to be updated 
+        pass
+
+
+    ## perform tests on the cleaned rental listings data, before loading into SQL Server table
+
     def test_for_duplicates(self, df):
         """ Check that there are no duplicate listing URLs"""
         # test for duplicate listing ids
