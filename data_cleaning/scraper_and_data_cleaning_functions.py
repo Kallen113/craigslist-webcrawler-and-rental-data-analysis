@@ -5,25 +5,28 @@ import os
 ## Perform data cleaning directly on specific lists before transforming the lists into a dictionary of lists:
 
 # cities (ie, city names) data cleaning:
-def clean_scraped_cities_data(cities_list):
+def clean_scraped_cities_data(dict_scraped_lists, cities_list):
     # transform 1st char of each word of each str element to upper-case
-    cities_list = [name_str.title() for name_str in cities_list] # clean data by using.title() to transform the first char of each word of each list element to upper-case
+    dict_scraped_lists[cities_list] = [name_str.title() for name_str in dict_scraped_lists[cities_list]] # clean data by using.title() to transform the first char of each word of each list element to upper-case
     # remove parantheses markings from each element
-    return [name_str.replace('(','').replace(')','') for name_str in cities_list] # Remove all parantheses markings from each list element
+    return [name_str.replace('(','').replace(')','') for name_str in dict_scraped_lists[cities_list]] # Remove all parantheses markings from each list element
+
+
+def clean_listing_ids(dict_scraped_lists, ids):
+    return [i.lstrip('post id: ') if 'post id: ' in i else i for i in dict_scraped_lists[ids]]
 
 
 ## parse kitchen data (ie, any type of kitchen)
-def parse_kitchen_data(kitchen_list, listing_descrip):
+def parse_kitchen_data(dict_scraped_lists, listing_descrip):
     # specify substring to look up in listing description to determine whether listing includes a kitchen
     kitchen_substr = 'kitchen'  
     # make sure we account for listings that explicitly specify that they do not have a kitchen  
     no_kitchen_substr = 'no kitchen'  
     # Transform all of the listing_descrip text data to lowercase (for ease of searching for substrings)
-    listing_descrip = [el.lower() for el in listing_descrip]  # transform each element to lowercase using .lower() method
-    # parse whether listing mentions that it includes a kitchen
-    kitchen_list =  [1 if kitchen_substr in el else 0 if no_kitchen_substr in el else 0 for el in listing_descrip]
-    return kitchen_list
-
+    dict_scraped_lists[listing_descrip] = [el.lower() for el in dict_scraped_lists[listing_descrip]]  # transform each element to lowercase using .lower() method
+    # parse whether listing mentions that it includes a kitchen, and return as replacement for the (*currently empty*) kitchen list within the dict of list:
+    return [1 if kitchen_substr in el else 0 if no_kitchen_substr in el else 0 for el in dict_scraped_lists[listing_descrip]]
+    
 ## Perform data cleaning on specific lists within the dictionary of lists containing the scraped data:
 
 ## sqft data cleaning
