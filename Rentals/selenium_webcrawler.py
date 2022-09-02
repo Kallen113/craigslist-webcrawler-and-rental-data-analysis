@@ -203,36 +203,60 @@ class Craigslist_Rentals(object):
 
             ## Check that there are no duplicate urls in listing_urls (ie, url hrefs for the inner rental listings pages):
             if len(listing_urls) == len(set(listing_urls)):  # check that there are no duplicate urls in urls list (ie, url hrefs for the rental listings pages)
+                
+                try:
 
-                ## Navigate to each next page, by clicking the 'next page' button (NB: different craigslist regions have one of *two* different xpaths to this button):
+                    ## Navigate to each next page, by clicking the 'next page' button (NB: different craigslist regions have one of *two* different xpaths to this button):
 
-                ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
-                next_page = self.web_driver.find_element_by_xpath('//*[@class="bd-button cl-next-page icon-only"] | //*[@class="button next"]')   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
+                    ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
+                    next_page = self.web_driver.find_element_by_xpath('//*[@class="bd-button cl-next-page icon-only"] | //*[@class="button next"]')   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
 
-                # sanity check on next_page button HTML
-                print(f'\n\nNext page button--parsed HTML (sanity check) is:{next_page}\n')
-
-
-                # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
-                self.web_driver.execute_script("arguments[0].click();", next_page) 
-                print("\nNavigating to the next page of rental listings\n")
+                    # sanity check on next_page button HTML
+                    print(f'\n\nNext page button--parsed HTML (sanity check) is:{next_page}\n')
 
 
-                # wait n seconds before accessing the next page, but randomize the amount of time delay, in order to mimic more human-like browser activity
-                rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
-                time.sleep(rand_sl_time) # wait minimum of 1 second to let the page's various HTML contents to load, before we start extracting the various data on each subsequent page.
-                print(f"\nNew page's URL:\n{self.web_driver.current_url}\n\n")
+                    # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
+                    self.web_driver.execute_script("arguments[0].click();", next_page) 
+                    print("\nNavigating to the next page of rental listings\n")
+
+
+                    # wait n seconds before accessing the next page, but randomize the amount of time delay, in order to mimic more human-like browser activity
+                    rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
+                    time.sleep(rand_sl_time) # wait minimum of 1 second to let the page's various HTML contents to load, before we start extracting the various data on each subsequent page.
+                    print(f"\nNew page's URL:\n{self.web_driver.current_url}\n\n")
+
+                ## account for newer next page button UI (ie, differing xpath) by checking for final page, in which next page button element no longer exists (and is greyed out)
+                except (NoSuchElementException, ElementClickInterceptedException) as e:
+                    # indicate that the last page has been reached
+                    print("\nLast page reached\n")
+                    
+                    ## scrape URLs for each rental listing on final page (accoutn for both xpath variants using pipe "or" operator)
+                    xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page
+
+                    wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
+                    wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+
+            
+                    # specify url xpath; account for both xpath variants using pipe "or" operator
+                    urls = self.web_driver.find_elements_by_xpath('//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
+                    
+                    for url in urls:   # iterate over each listing URL on page, and extract href URL
+                        listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
+
+
+                    # ## remove any duplicate listing urls by assigning it to a list of OrderedDict.fromkeys() method, which will remove duplicate elements (urls) while also retaining the order of the list's elements.
+                    listing_urls = list(OrderedDict.fromkeys(listing_urls))  # remove any duplicate listing urls
+
+                
+                    # sanity check on scraped urls:
+                    print(f'The total number of scraped rental listing urls are:{len(listing_urls)}\n')
+                    
+                    # return list of rental listing urls
+                    return listing_urls
+
         
-            # last page has been reached since there *are* duplicate urls that have been scraped/encountered by the webcrawler 
+            ## The last page has been reached since there *are* duplicate urls that have been scraped/encountered by the webcrawler 
             else:
-                # # account for possibility that there's only a single page of listings:
-                # urls = self.web_driver.find_elements_by_xpath('//a[@class="post-title"]')
-
-                # for url in urls:   
-                #     listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
-
-            # # NB: if 1 of the following 3 exceptions occur, we will stop the while loop from navigating to the next page, since the last page will have been reached
-            # except (NoSuchElementException, ElementClickInterceptedException, TimeoutException) as e:
 
                 """ Parse last page's data:"""
                 
@@ -315,7 +339,7 @@ class Craigslist_Rentals(object):
 
                 print('The internet connection has been lost or WebDriver browser has been closed,\nresulting in a WebDriverException and/or TimeoutException.')
                 print('\nAll previously scraped listings for this session will be saved and outputted to CSV.')
-                break   #  break for loop, and proceed to data cleaning and data pipelines
+                break   #  break for loop, and proceed to data transformation, cleaning and data pipelines
 
             # scrape data (given none of the above exceptions are encountered)
             else:
@@ -433,7 +457,9 @@ class Craigslist_Rentals(object):
         ## Data cleaning and wrangling:
         
         # remove dollar signs for rental prices data
-        df_from_dict['prices'] = df_from_dict['prices'].str.replace('$', '')   
+        df_from_dict['prices'] = df_from_dict['prices'].str.replace(
+            '$', '', regex=True
+            )   
 
         # parse specific attributes (e.g., 'cats_OK') from the attr_vars and listing_descrip cols as indicator variables:
         parse_attrs(df_from_dict) # NB: run parse_attrs() function comprising factored-out code from imported data cleaning script--ie, parse data as indicator variables for df_from_dict DataFrame
