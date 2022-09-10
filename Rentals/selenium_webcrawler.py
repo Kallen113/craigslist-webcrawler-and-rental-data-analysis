@@ -175,14 +175,6 @@ class Craigslist_Rentals(object):
         
         # crawl over each page of listings, by looking for 'next' page buttons and clicking these after scraping the URLs of the inner listings. An exception will occur once the final page is reached since no additional 'next' page buttons will be present (and then, the webcrawler will iterate over and access each individual rental listing page)
 
-        """                
-        # *** 
-        # NB!:
-        # On August 17, 2022, craigslist updated their website *for the sfbay region only (thus far)*, and the next page buttons need to be re-referenced for any such sfbay webcrawlers
-        # ***
-        """
-        ## scrape URLs for each rental listing on given page:
-
         while True:
             # wait until first inner listing's href has been loaded on given page; account for *both* xpath variants that exist on the various craigslist region domains (by using pipe "or" operator)
             xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page. NB: the pipe (ie, |) is used as a Boolean "or" operator so that we can account 
@@ -211,14 +203,10 @@ class Craigslist_Rentals(object):
                     ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
                     next_page = self.web_driver.find_element_by_xpath('//*[@class="bd-button cl-next-page icon-only"] | //*[@class="button next"]')   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
 
-                    # sanity check on next_page button HTML
-                    print(f'\n\nNext page button--parsed HTML (sanity check) is:{next_page}\n')
-
 
                     # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
                     self.web_driver.execute_script("arguments[0].click();", next_page) 
                     print("\nNavigating to the next page of rental listings\n")
-
 
                     # wait n seconds before accessing the next page, but randomize the amount of time delay, in order to mimic more human-like browser activity
                     rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
@@ -334,7 +322,7 @@ class Craigslist_Rentals(object):
                 date_posted.append(nan_val) #date_posted
 
             # terminate for loop if the user closes the webdriver browser--at any point of iteration--or if the internet connection is lost:                                    
-            except (WebDriverException, TimeoutException) as e:   # ie: if webdriver connection cannot be established or has been lost
+            except (WebDriverException, TimeoutException, ) as e:   # ie: if webdriver connection cannot be established or has been lost
                 print('\n\nNB: The WebDriver connection has been lost:\n')
 
                 print('The internet connection has been lost or WebDriver browser has been closed,\nresulting in a WebDriverException and/or TimeoutException.')
@@ -388,9 +376,8 @@ class Craigslist_Rentals(object):
                 if len(ids) < len(listing_urls):  # If additional listings in the list have not been crawled on, then move on to the next rental listing in the listing_urls--ie, via pass command
 
                     ## print some webcrawler progress diagnostics--such as the number of listings accessed--in CLI: 
-                    print(f"\nListing URL being crawled on:\n  {list_url}\n\n")
-                    print(f"Number of listings we have crawled over:\n{len(prices)}\n")
-                    print(f"There are {len(listing_urls)-len(prices)} more listings left.")
+                    print(f"\nNumber of listings we have crawled over:\n{len(ids)}\n")
+                    print(f"There are {len(listing_urls)-len(ids)} more listings left.")
 
                     ## provide delay in b/w GET requests to avoid being flagged by server as a bot: ie, before we access each subsequent listing:
                     time.sleep(rand_sl_time)
@@ -400,8 +387,7 @@ class Craigslist_Rentals(object):
                 #  Once we have iterated through each listing URL, terminate the loop
                 else:  
                     break
-
-            
+    
 
         ## Create column to have data showing the date on which the webcrawler module was executed:
 

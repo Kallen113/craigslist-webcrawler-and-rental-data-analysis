@@ -322,7 +322,7 @@ def transform_cols_to_int(df, list_of_cols_to_num):
     df['sqft'] = df['sqft'].astype(str).str.replace(r'\D+', '', regex=True) # remove all non-numeric data from 'sqft' col by using regex to replace any non-numeric data from col to null ('NaN') values via the str.replace() Pandas method
     df['sqft'] = df['sqft'].replace(r'^\s*$', np.nan, regex=True)  # replace all empty str sqft values with  null ('NaN') values 
     # clean prices data-- remove any records posted with sqft instead of price data
-    df = df[~df.prices.str.contains("ft2")] # remove listings records with incorrectly posted prices data 
+    df = df[~df.prices.str.contains("ft2", na=False)] # remove listings records with incorrectly posted prices data 
     # remove rows with any remaining null rows wrt list of cols (ie, sqft, prices, etc.) (so we can readily convert to int):
     df = df.dropna(subset=list_of_cols_to_num) # remove rows with null data 
     # finally, convert all cols from list to 'int64' integer data type:
