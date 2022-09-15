@@ -89,7 +89,7 @@ class Craigslist_Rentals(object):
 
     def parse_html_via_xpath(self, xpath_arg: str, list_to_append: list) -> list:
         """ Scrape data from HTML element by looking up xpath (via selenium's find_element_by_xpath() method), within a try except control flow clause to account for rental listings that are missing a given HTML element.
-        a.) Except if a NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--then wait until given HTML element has loaded on page using WebDriverWait() method.
+        a.) Except if a NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--add an 'nan' value indicating missing data.
         b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
         try:
             # a.) wait until given HTML element has loaded
@@ -107,6 +107,7 @@ class Craigslist_Rentals(object):
 
 
     def parse_html_via_xpath_and_click(self, xpath_arg: str, list_to_append: list)-> list:
+
         """ Scrape data from HTML element by looking up xpath (via selenium find_element_by_xpath() method), but then click to reveal the date-time data.
         a.) Except if a ElementClickInterceptedException, NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--then wait until given HTML element has loaded on page using WebDriverWait() method.
         b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
@@ -303,26 +304,37 @@ class Craigslist_Rentals(object):
                 # access the individual rental listings via the href URLs we have parsed:
                 self.web_driver.get(list_url)
 
-            # append 'nan' vals if any of the data we are trying to scrape are missing on given rental listing 
-            except (ElementClickInterceptedException, NoSuchElementException) as e:
-            # except (ElementClickInterceptedException) as e:
+                ## Attempt to click and scrape data re: date when the listing was posted (ie, date_posted)  
+                try:
+                    # Click and then scrape the date posted data--NB: we need to click the element so we can scrape the specific date rather than a str specifying 'x days ago':
+                    self.parse_html_via_xpath_and_click('//time[@class="date timeago"]', date_posted)
 
-                """If a NoSuchElementException, ElementClickInterceptedException, or TimeoutException is encountered--e.g., if a rental listing posting has expired, then append 'nan' values for each list (aside from the listing_urls since this has already been populated) for that given listing, and move onto the remaining listing URLs remaining within the for loop. NB: An ElementClickInterceptedException exception occurs when the webdriver attempts to click an element that has the incorrect xpath. """
-                print(f"\n\nRental listing posting {list_url} has expired or webpage is not accessible since the webcrawler has encountered one of the following exceptions: a TimeoutException, NoSuchElementException, WebDriverException, or ElementClickInterceptedException. \n\n")
-                # input nan values for each scraped data list if given listing has been deleted or another issue has caused a TimeoutException error
-                nan_val = 'nan'  # specify nan value, which we will use to append to each of the lists as we attempt to scrape the data:
-                ids.append(nan_val)  ## listing ids
-                prices.append(nan_val)  ##  rental price data
-                cities.append(nan_val)  ##  city names
-                bedrooms.append(nan_val) ## number of bedrooms data
-                bathrooms.append(nan_val) ##  number of bathrooms data
-                sqft.append(nan_val) ##  sqft data
-                listing_descrip.append(nan_val) ##  listing descriptions
-                attr_vars.append(nan_val) # attribute data
-                date_posted.append(nan_val) #date_posted
+
+                ## Append 'nan' vals if the date_posted has not been clicked (allow user to exit webcrawler program and output available data to CSV) or if any of the data we are trying to scrape are missing on given rental listing page:
+
+                ## Account for situations in which listings have been deleted or expired while the script has been running. 
+                ## Also, enable user to exit webcrawler program before a given listing's date_posted data has been clicked
+                except (ElementClickInterceptedException, NoSuchElementException) as e:
+
+                    """If an ElementClickInterceptedException or NoSuchElementException is encountered--e.g., if a rental listing posting has expired or if the user exits the webdriver before date_posted can be clicked, then append 'nan' values for each list (aside from the listing_urls since this has already been populated) for that given listing, and move onto the remaining listing URLs remaining within the for loop. NB: An ElementClickInterceptedException exception occurs when the webdriver attempts to click an element that has the incorrect xpath. """
+                    print(f"\n\nRental listing posting {list_url} has expired or webpage is not accessible since the webcrawler has encountered one of the following exceptions: a TimeoutException, NoSuchElementException, WebDriverException, or ElementClickInterceptedException. \n\n")
+                    # input nan values for each scraped data list if given listing has been deleted or another issue has caused a TimeoutException error
+                    nan_val = 'nan'  # specify nan value, which we will use to append to each of the lists as we attempt to scrape the data:
+                    ids.append(nan_val)  ## listing ids
+                    prices.append(nan_val)  ##  rental price data
+                    cities.append(nan_val)  ##  city names
+                    bedrooms.append(nan_val) ## number of bedrooms data
+                    bathrooms.append(nan_val) ##  number of bathrooms data
+                    sqft.append(nan_val) ##  sqft data
+                    listing_descrip.append(nan_val) ##  listing descriptions
+                    attr_vars.append(nan_val) # attribute data
+                    date_posted.append(nan_val) #date_posted
+
+                    continue
+
 
             # terminate for loop if the user closes the webdriver browser--at any point of iteration--or if the internet connection is lost:                                    
-            except (WebDriverException, TimeoutException, ) as e:   # ie: if webdriver connection cannot be established or has been lost
+            except (WebDriverException, TimeoutException) as e:   # ie: if webdriver connection cannot be established or has been lost
                 print('\n\nNB: The WebDriver connection has been lost:\n')
 
                 print('The internet connection has been lost or WebDriver browser has been closed,\nresulting in a WebDriverException and/or TimeoutException.')
@@ -354,7 +366,6 @@ class Craigslist_Rentals(object):
 
 
                 ## Scrape sqft data:
-                # self.parse_html_via_xpath('//span[@class="housing"]', sqft)
                 self.parse_html_via_xpath('//span[@class="housing"]', sqft)
 
 
@@ -364,9 +375,6 @@ class Craigslist_Rentals(object):
                 ## Scrape attribute data:
                 self.parse_html_via_xpath('//p[@class="attrgroup"][last()]', attr_vars)  # the attributes are always the *last* p tag with a class name of "attrgroup" (the number of such p tags differs, ranging from 2-3 typically) 
 
-
-                # Scrape the date posted data (given we have clicked the element----NB: we need to click the element so we can scrape the specific date rather than a str specifying 'x days ago')
-                self.parse_html_via_xpath_and_click('//time[@class="date timeago"]', date_posted)
 
 
             ## Aside from a WebDriverException or TimeoutException error, move on with for loop until all urls have been iterated over
