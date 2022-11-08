@@ -473,15 +473,15 @@ def main():
     split_city_delimiters =  [',', '/', ' - ', '_____', '#']
 
     # specify dictionary of abbreviated & mispelled cities:
-    incorrect_city_names = {'Rohnert Pk':'Rohnert Park', 'Hillsborough Ca': 'Hillsborough','Fremont Ca':'Fremont', 'South Sf': 'South San Francisco', 'Ca':'', 'East San Jose':'San Jose', 'Vallejo Ca':'Vallejo', 'Westgate On Saratoga .':'San Jose', 'Bodega':'Bodega Bay', 'Briarwood At Central Park':'Fremont', 'Campbell Ca':'Campbell', 'Almaden':'San Jose', '.':'', 'East Foothills':'San Jose', 'Lake County':'', 'West End':'Alameda', 'Redwood Shores':'Redwood City', 'Park Pacifica Neighborhood':'Pacifica'}
+    incorrect_city_names = {'Rohnert Pk':'Rohnert Park', 'Hillsborough Ca': 'Hillsborough','Fremont Ca':'Fremont', 'South Sf': 'South San Francisco', 'Ca':'', 'East San Jose':'San Jose', 'Vallejo Ca':'Vallejo', 'Westgate On Saratoga .':'San Jose', 'Bodega':'Bodega Bay', 'Briarwood At Central Park':'Fremont', 'Campbell Ca':'Campbell', 'Almaden':'San Jose', '.':'', 'East Foothills':'San Jose', 'Lake County':'', 'West End':'Alameda', 'Redwood Shores':'Redwood City', 'Park Pacifica Neighborhood':'Pacifica', 'Pt Richmond':'Richmond'}
 
     # specify dictionary of cities that are not located in sfbay (ie, not located in the region):
-    cities_not_in_region = {'Ketchum':'', 'Baypoinr':'', 'Quito': '', 'Redding':'', 'Bend' :'', 'Near Mount Lassen':'', 'Tracy':'', 'Middletown':''}
+    cities_not_in_region = {'Ketchum':'', 'Baypoinr':'', 'Quito': '', 'Redding':'', 'Bend' :'', 'Near Mount Lassen':'', 'Tracy':'', 'Middletown':'', 'Truckee':'', 'Midtown Sacramento':'', 'Tro Valley-':'', 'Neighborhood':''}
 
     # specify dictionary of city names that are mispelled after having removed various street and neighborhood substrings:
     cities_that_need_extra_cleaning = {'. Helena': 'St. Helena', '. Helena Deer Park': 'St. Helena', 'San Los':'San Carlos', 'Tro Valley':'Castro Valley', 'Rohnert Pk':'Rohnert Park',
     'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon', 'Millbrae On The Burlingame Border':'Millbrae', 'Ockton Ca': 'Stockton', '. Rohnert Park': 'Rohnert Park', 'Udio Behind Main House':'', '***---rohnert Park':'Rohnert Park',
-    'Meadow Ridge Cir':'San Jose', 'Irvington High Area':'Fremont', 'Interlaken-watsonville':'Interlaken', 'Dimond District':'Oakland', 'Apt':''}
+    'Meadow Ridge Cir':'San Jose', 'Irvington High Area':'Fremont', 'Interlaken-watsonville':'Interlaken', 'Dimond District':'Oakland', 'Apt':'', 'Neighborhood':''}
 
     # clean city names data:
     df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)

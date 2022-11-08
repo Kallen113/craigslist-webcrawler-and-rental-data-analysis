@@ -178,8 +178,8 @@ class Craigslist_Rentals(object):
 
         while True:
             # wait until first inner listing's href has been loaded on given page; account for *both* xpath variants that exist on the various craigslist region domains (by using pipe "or" operator)
-            xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page. NB: the pipe (ie, |) is used as a Boolean "or" operator so that we can account 
-
+            xpath_first_listing_url_on_page = '//*[@id="search-toolbars-1"]/div[2]/button[3] | //*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page. NB: the pipe (ie, |) is used as a Boolean "or" operator so that we can account 
+                        
             wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
             wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
 
