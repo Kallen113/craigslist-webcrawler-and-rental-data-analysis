@@ -48,7 +48,6 @@ def main():
 
     # specify region craigslist code, for webcrawler's starting URL-- parse the region_URL to craigslist region codes:
     region = parse_region_code_for_craigslist_URL_main_webcrawler(region_URL)  # use split() method to parse the region code from the region_URL of the selected region!
-    # region = region_URL.split('//')[1].split('.')[0]  # use split() method to parse *just* the region code from the region_URL of the selected region!
 
     # Next, parse clist subregion (if needed), and prompt user to select a subregion corresponding to the selected region:
 
@@ -82,8 +81,9 @@ def main():
 
         # sanity check
         print(f'Subregion value selected:\n{subregion}')
-
-     
+    
+    ## Specify all other parameters for Craigslist_Rentals() class, including min & max price for searchform, etc.:
+    
     ## filter housing category to 'apa'-ie, rental listings (apartments & housing for rent)
     housing_category = 'apa'
     ## filter min & max rental price to avoid scraping unusual otn misclassified rental listings:
@@ -97,22 +97,32 @@ def main():
     # given above arguments, initialize a customized craigslist rental listing URL via the Craigslist_Rentals class, for the selenium webcrawler to access:
     craigslist_crawler = Craigslist_Rentals(region, subregion, housing_category, min_price, max_price, rent_period, sale_date)
 
-    #access the URL via selenium Chrome webdriver: 
+    ## Access the craigslist URL via selenium Chrome webdriver
     craigslist_crawler.load_craigslist_form_URL()
 
-    # implement the main web crawler and obtain the rental listing href URLs from the pages of listings: 
-    listing_urls = craigslist_crawler.obtain_listing_urls()
+    ## Implement the main web crawler via obtain_listing_urls() method, and obtain the rental listing href URLs from the pages of listings (and append to listing_urls list): 
+    # 1st argument of obtain_listing_urls() method: specify all possible xpaths to the first listings on a given page, so we can wait until the listings have loaded before scraping data:
+    xpaths_first_listing_url_on_page = '//*[@class="title-string"] | //*[@id="search-results-page-1"]/ol/li[1]/div/div[1]/div/div[2]/a | //*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page. NB: the pipe (ie, |) is used as a Boolean "or" operator so that we can account for any one of multiple possible xpaths!!
 
-    # scrape the rental listings' data, and store data as dict of lists:
+    # 2nd argument of obtain_listing_urls() method: specify xpaths for 
+    xpaths_listing_urls = '//a[@class="titlestring"] | //a[@class="post-title"] | //a[@class="result-title hdrlnk"]'
+    
+    # 3rd argument of obtain_listing_urls() method: specify the xpaths for the 'next' page button widget we need to click to navigate to each subsequent page: 
+    next_page_button_xpaths = '//*[@class="bd-button cl-next-page icon-only"] | //*[@class="button next"]'
+    
+    # implement obtain_listing_urls() method to initiate webcrawler:
+    listing_urls = craigslist_crawler.obtain_listing_urls(xpaths_first_listing_url_on_page, xpaths_listing_urls, next_page_button_xpaths)  # method requires 2 arguments: xpaths to first listings on given page, and xpaths to the next page button widgets
+
+    ## scrape the rental listings' data, and store data as dict of lists:
     dict_scraped_lists = craigslist_crawler.scrape_listing_data(listing_urls)  
 
-    # Perform data cleaning on scraped data:
+    ## Perform data cleaning on scraped data:
     dict_scraped_lists = craigslist_crawler.clean_scraped_data(dict_scraped_lists)
     
-    # transform the dictionary of lists to Pandas' DataFrame, and peform additional data cleaning and wrangling:
+    ## Transform the dictionary of lists to Pandas' DataFrame, and peform additional data cleaning and wrangling:
     df = craigslist_crawler.dict_to_df_pipeline(dict_scraped_lists)
 
-    # Execute DataFrame to CSV data pipeline,after cleaning city names data for specific subregions 
+    ## Execute DataFrame to CSV data pipeline,after cleaning city names data for specific subregions 
     craigslist_crawler.df_to_CSV_data_pipeline(df)
 
 if __name__== "__main__":

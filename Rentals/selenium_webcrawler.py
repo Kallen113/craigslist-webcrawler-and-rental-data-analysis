@@ -131,45 +131,17 @@ class Craigslist_Rentals(object):
         return list_to_append.append(date_posted_click.text)  # parse text data from scraped html element, and append to list for given variable of interest
 
 
-    def mk_direc_for_scraped_data(self, parent_direc: str, new_path: str) -> str:
-        """Create directory (if it doesn't exist) to contain the scraped data, with separate directories for specific regions and subregions."""
-        parent_direc = parent_direc  # specify the parent directory where we will create new direc
-        # use f-strings to add in backslahes as directory separators
-        backslashes_separator = "\\"
-        # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
-        new_path = f"{new_path}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
-        path_for_csv = os.path.join(parent_direc, new_path)  # specify full path--including the new path we will create
+    def obtain_listing_urls(self, xpaths_first_listing_url_on_page, xpaths_listing_urls,  xpaths_next_page_button)-> list:
+        """Crawl over each page of rental listings, given starting URL from Craigslist_Rentals class. Obtain the URLs from each page's Craigslist rental listings. Then, parse the data of each 'inner' rental listing by accessing each of these URLs, and use xpath or class name selenium methods to scrape and parse various HTML elements (ie, the listing data that we want to scrape). 
+        Takes in 3 arguments: 
+        a) xpaths_first_listing_url_on_page: all possible xpaths corresponding to the first listing on a given page (so we can wait until listings have loaded on given page).
+         
+        b) xpaths_listing_urls: xpaths for inner listing page URLs (hrefs) 
+        
+        &
+        c) xpaths_next_page_button: xpaths for the next page button widget (ie, we need to click these to nagivate to subsequent pages of listings) .
 
-        if not os.path.exists(path_for_csv):
-            """ Create directory to contain scraped data, if path does not exist"""
-            return os.makedirs(path_for_csv)
-
-    def export_to_csv(self, df: DataFrame, parent_direc_for_csv: str) -> csv:
-        """Save df as CSV in the new path, sans index. Given the mk_direc...() function,
-        we will save the CSV file inside the region and subregion subdirectories
-        (but only specify parent directory containing all of the scraped data).
-        Append today's date and region + subregion names to CSV file name."""
-        # specify preface of CSV file name
-        csv_preface_name = 'craigslist_rental'
-        # use f-strings to add in backslahes as directory separators
-        backslashes_separator = "\\"
-        # add region and subregion sub-directories to path where we will save the CSV file--NB: add in backslashes_separator to separate different sub-directories:
-        path_for_csv = f"{parent_direc_for_csv}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
-
-        # append today's date and the .csv extension to suffix of CSV file name
-        today_dt_str = datetime.date.today().strftime("%m_%d_%Y")  # get today's date in 'mm_dd_YYYY' format
-        # specify underscore -- ie, '_' --as file name separator using f-strings
-        underscore_separator = '_'
-        # specify CSV file suffix
-        csv_suffix = '.csv'
-        # add region and subregion names to CSV file, and add .csv extension:
-        csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{underscore_separator}{csv_suffix}" # append today's date and .csv extension to the file name
-        # export dataframe to CSV. NB: concatenate CSV file name to the path by using os.path.join(). Also, do not export index since it does not contain pertinent data
-        return df.to_csv(os.path.join(path_for_csv, csv_file_name), index=False)
-
-
-    def obtain_listing_urls(self)-> list:
-        """Crawl over each page of rental listings, given starting URL from Craigslist_Rentals class. Obtain the URLs from each page's Craigslist rental listings. Then, parse the data of each 'inner' rental listing by accessing each of these URLs, and use xpath or class name selenium methods to scrape and parse various HTML elements (ie, the listing data that we want to scrape). Return as a list."""
+        Finally: Return the listing urls as a list."""
         
         #initialize empty lists that will contain the data we will scrape:
         listing_urls = []  # URLs for each rental listing
@@ -177,16 +149,17 @@ class Craigslist_Rentals(object):
         # crawl over each page of listings, by looking for 'next' page buttons and clicking these after scraping the URLs of the inner listings. An exception will occur once the final page is reached since no additional 'next' page buttons will be present (and then, the webcrawler will iterate over and access each individual rental listing page)
 
         while True:
-            # wait until first inner listing's href has been loaded on given page; account for *both* xpath variants that exist on the various craigslist region domains (by using pipe "or" operator)
-            xpath_first_listing_url_on_page = '//*[@id="search-toolbars-1"]/div[2]/button[3] | //*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page. NB: the pipe (ie, |) is used as a Boolean "or" operator so that we can account 
-                        
+            # wait until first inner listing's href has been loaded on given page; account for *both* xpath variants that exist on the various craigslist region domains (by using pipe "or" operator)            
+
             wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+            wait_until.until(EC.presence_of_element_located((By.XPATH, xpaths_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
 
             # scrape the HTML element, extract text, and append to list 
 
             # specify xpath to inner listings' data (which includes href URLs); use pipe "or" operator to account for both xpath variants  
-            urls = self.web_driver.find_elements_by_xpath('//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
+            urls = self.web_driver.find_elements_by_xpath(xpaths_listing_urls)
+
+            
            
             # iterate over each rental listing's URL, extract hrefs, and append to list  
             for url in urls:   
@@ -202,8 +175,7 @@ class Craigslist_Rentals(object):
                     ## Navigate to each next page, by clicking the 'next page' button (NB: different craigslist regions have one of *two* different xpaths to this button):
 
                     ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
-                    next_page = self.web_driver.find_element_by_xpath('//*[@class="bd-button cl-next-page icon-only"] | //*[@class="button next"]')   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
-
+                    next_page = self.web_driver.find_element_by_xpath(xpaths_next_page_button)   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
 
                     # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
                     self.web_driver.execute_script("arguments[0].click();", next_page) 
@@ -220,14 +192,13 @@ class Craigslist_Rentals(object):
                     print("\nLast page reached\n")
                     
                     ## scrape URLs for each rental listing on final page (accoutn for both xpath variants using pipe "or" operator)
-                    xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page
 
                     wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-                    wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+                    wait_until.until(EC.presence_of_element_located((By.XPATH, xpaths_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
 
             
                     # specify url xpath; account for both xpath variants using pipe "or" operator
-                    urls = self.web_driver.find_elements_by_xpath('//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
+                    urls = self.web_driver.find_elements_by_xpath(xpaths_listing_urls)
                     
                     for url in urls:   # iterate over each listing URL on page, and extract href URL
                         listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
@@ -254,6 +225,7 @@ class Craigslist_Rentals(object):
                 
                 ## scrape URLs for each rental listing on final page (accoutn for both xpath variants using pipe "or" operator)
                 xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page
+                # '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'
 
                 wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
                 wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
@@ -474,6 +446,46 @@ class Craigslist_Rentals(object):
         print_scraped_sanity_checks(df_from_dict)
 
         return df_from_dict
+
+    ## Define 2 additional methods that will be called upon by the df_to_CSV_data_pipeline() method:
+    
+    # make directory to contain scraped data if it does not yet exist:
+    def mk_direc_for_scraped_data(self, parent_direc: str, new_path: str) -> str:
+        """Create directory (if it doesn't exist) to contain the scraped data, with separate directories for specific regions and subregions."""
+        parent_direc = parent_direc  # specify the parent directory where we will create new direc
+        # use f-strings to add in backslahes as directory separators
+        backslashes_separator = "\\"
+        # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
+        new_path = f"{new_path}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
+        path_for_csv = os.path.join(parent_direc, new_path)  # specify full path--including the new path we will create
+
+        if not os.path.exists(path_for_csv):
+            """ Create directory to contain scraped data, if path does not exist"""
+            return os.makedirs(path_for_csv)
+
+    # export CSV given directory that exists or has been crated via the mk_direc_for_scraped_data() method:
+    def export_to_csv(self, df: DataFrame, parent_direc_for_csv: str) -> csv:
+        """Save df as CSV in the new path, sans index. Given the mk_direc...() function,
+        we will save the CSV file inside the region and subregion subdirectories
+        (but only specify parent directory containing all of the scraped data).
+        Append today's date and region + subregion names to CSV file name."""
+        # specify preface of CSV file name
+        csv_preface_name = 'craigslist_rental'
+        # use f-strings to add in backslahes as directory separators
+        backslashes_separator = "\\"
+        # add region and subregion sub-directories to path where we will save the CSV file--NB: add in backslashes_separator to separate different sub-directories:
+        path_for_csv = f"{parent_direc_for_csv}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
+
+        # append today's date and the .csv extension to suffix of CSV file name
+        today_dt_str = datetime.date.today().strftime("%m_%d_%Y")  # get today's date in 'mm_dd_YYYY' format
+        # specify underscore -- ie, '_' --as file name separator using f-strings
+        underscore_separator = '_'
+        # specify CSV file suffix
+        csv_suffix = '.csv'
+        # add region and subregion names to CSV file, and add .csv extension:
+        csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{underscore_separator}{csv_suffix}" # append today's date and .csv extension to the file name
+        # export dataframe to CSV. NB: concatenate CSV file name to the path by using os.path.join(). Also, do not export index since it does not contain pertinent data
+        return df.to_csv(os.path.join(path_for_csv, csv_file_name), index=False)
 
     def df_to_CSV_data_pipeline(self, df: DataFrame) -> csv:
         """Clean specific subregions' city names data, create directory for given region and subregion, and export DataFrame containing scraped data to CSV within said subregion directory"""
