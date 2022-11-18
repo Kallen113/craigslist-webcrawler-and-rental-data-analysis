@@ -20,6 +20,9 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options  # Options enables us to tell Selenium to open WebDriver browsers using maximized mode, and we can also disable any extensions or infobars
 
+# pathlib library to look up whether given path exists and create path if it does not yet exist
+from pathlib import Path
+
 # import functions for cleaning misclassified data or city names data that we need to rename (e.g., for SF and  Santa Cruz counties)
 # NB: since these scripts are from the same directory, we should use the '.file_name'--ie, dot prefix to specify we are importing from the same directory as this script:
 from .clean_city_names import clean_city_names_for_sf, sf_neighborhoods, clean_given_city_names_data, sj_neighborhoods, oakland_neighborhoods, alameda_neighborhoods, hayward_neighborhoods, richmond_neighborhoods, santa_clara_neighborhoods  # import from same directory (ie,. dot prefix) functions to clean SF city names data and import lists of all neighborhoods for given cities--e.g., SF neighborhoods (including various abbreviations used on craigslist)
@@ -108,17 +111,18 @@ class Craigslist_Rentals(object):
 
     def parse_html_via_xpath_and_click(self, xpath_arg: str, list_to_append: list)-> list:
 
-        """ Scrape data from HTML element by looking up xpath (via selenium find_element("xpath") method), but then click to reveal the date-time data.
+        """ Scrape data from HTML element by looking up xpath (via selenium find_element('xpath') method), but then click to reveal the date-time data.
         a.) Except if a ElementClickInterceptedException, NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--then wait until given HTML element has loaded on page using WebDriverWait() method.
         b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
 
         # wait until given HTML element has loaded
         try:
+            # a.) wait until given HTML element has loaded, or up to 50 seconds
             wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 50 seconds
+            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) 
             # b.) scrape the HTML element, extract text, and append to given list
             date_posted_click = self.web_driver.find_element("xpath", xpath_arg)
-            # # provide delay to avoid being flagged by server as a bot, before we access each subsequent listing.
+            ## provide delay to avoid being flagged by server as a bot, before we access each subsequent listing.
             rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
             time.sleep(rand_sl_time)
             # click on element so that it will reveal the date-time value--ie, datetime val when the listing was posted
@@ -131,15 +135,12 @@ class Craigslist_Rentals(object):
         return list_to_append.append(date_posted_click.text)  # parse text data from scraped html element, and append to list for given variable of interest
 
 
-    def obtain_listing_urls(self, xpaths_first_listing_url_on_page, xpaths_listing_urls,  xpaths_next_page_button)-> list:
+    def obtain_listing_urls(self, xpaths_listing_urls,  xpaths_next_page_button)-> list:
         """Crawl over each page of rental listings, given starting URL from Craigslist_Rentals class. Obtain the URLs from each page's Craigslist rental listings. Then, parse the data of each 'inner' rental listing by accessing each of these URLs, and use xpath or class name selenium methods to scrape and parse various HTML elements (ie, the listing data that we want to scrape). 
-        Takes in 3 arguments: 
-        a) xpaths_first_listing_url_on_page: all possible xpaths corresponding to the first listing on a given page (so we can wait until listings have loaded on given page).
-         
-        b) xpaths_listing_urls: xpaths for inner listing page URLs (hrefs) 
-        
+        Takes in 2 arguments: 
+        a) xpaths_listing_urls: xpaths for inner listing page URLs (hrefs) 
         &
-        c) xpaths_next_page_button: xpaths for the next page button widget (ie, we need to click these to nagivate to subsequent pages of listings) .
+        b) xpaths_next_page_button: xpaths for the next page button widget (ie, we need to click these to nagivate to subsequent pages of listings) .
 
         Finally: Return the listing urls as a list."""
         
@@ -149,16 +150,15 @@ class Craigslist_Rentals(object):
         # crawl over each page of listings, by looking for 'next' page buttons and clicking these after scraping the URLs of the inner listings. An exception will occur once the final page is reached since no additional 'next' page buttons will be present (and then, the webcrawler will iterate over and access each individual rental listing page)
 
         while True:
-            # wait until first inner listing's href has been loaded on given page; account for *both* xpath variants that exist on the various craigslist region domains (by using pipe "or" operator)            
 
-            wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-            wait_until.until(EC.presence_of_element_located((By.XPATH, xpaths_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+            # # wait until first inner listing's href has been loaded on given page; account for *both* xpath variants that exist on the various craigslist region domains (by using pipe "or" operator)            
+            # wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
+            # wait_until.until(EC.presence_of_element_located((By.XPATH, xpaths_listing_urls))) # wait until given HTML element has loaded, or up to 50 seconds
 
             # scrape the HTML element, extract text, and append to list 
 
             # specify xpath to inner listings' data (which includes href URLs); use pipe "or" operator to account for both xpath variants  
             urls = self.web_driver.find_elements("xpath", xpaths_listing_urls)
-
             
            
             # iterate over each rental listing's URL, extract hrefs, and append to list  
@@ -175,8 +175,8 @@ class Craigslist_Rentals(object):
                     ## Navigate to each next page, by clicking the 'next page' button (NB: different craigslist regions have one of *two* different xpaths to this button):
 
                     ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
-                    next_page = self.web_driver.find_element("xpath", xpaths_next_page_button)   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
-
+                    next_page = self.web_driver.find_element("xpath", xpaths_next_page_button)     # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
+                    
                     # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
                     self.web_driver.execute_script("arguments[0].click();", next_page) 
                     print("\nNavigating to the next page of rental listings\n")
@@ -193,8 +193,8 @@ class Craigslist_Rentals(object):
                     
                     ## scrape URLs for each rental listing on final page (accoutn for both xpath variants using pipe "or" operator)
 
-                    wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-                    wait_until.until(EC.presence_of_element_located((By.XPATH, xpaths_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+                    # wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
+                    # wait_until.until(EC.presence_of_element_located((By.XPATH, xpaths_listing_urls))) # wait until given HTML element has loaded, or up to 50 seconds
 
             
                     # specify url xpath; account for both xpath variants using pipe "or" operator
@@ -224,15 +224,17 @@ class Craigslist_Rentals(object):
                 print("\nLast page reached\n")
                 
                 ## scrape URLs for each rental listing on final page (accoutn for both xpath variants using pipe "or" operator)
-                xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page
+                # xpath_first_listing_url_on_page = '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page
                 # '//*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'
 
-                wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-                wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
+                # wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
+                # wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_first_listing_url_on_page))) # wait until given HTML element has loaded, or up to 50 seconds
 
            
                 # specify url xpath; account for both xpath variants using pipe "or" operator
-                urls = self.web_driver.find_elements("xpath", '//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
+                urls = self.web_driver.find_elements("xpath", xpaths_listing_urls)
+                # find_elements_by_xpath('//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
+                
                 
                 for url in urls:   # iterate over each listing URL on page, and extract href URL
                     listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
@@ -285,7 +287,7 @@ class Craigslist_Rentals(object):
                 ## Append 'nan' vals if the date_posted has not been clicked (allow user to exit webcrawler program and output available data to CSV) or if any of the data we are trying to scrape are missing on given rental listing page:
 
                 ## Account for situations in which listings have been deleted or expired while the script has been running. 
-                ## Also, enable user to exit webcrawler program before a given listing's date_posted data has been clicked
+                ## Also, enable user to exit webcrawler program before a given listing's date_posted data has been clicked:
                 except (ElementClickInterceptedException, NoSuchElementException) as e:
 
                     """If an ElementClickInterceptedException or NoSuchElementException is encountered--e.g., if a rental listing posting has expired or if the user exits the webdriver before date_posted can be clicked, then append 'nan' values for each list (aside from the listing_urls since this has already been populated) for that given listing, and move onto the remaining listing URLs remaining within the for loop. NB: An ElementClickInterceptedException exception occurs when the webdriver attempts to click an element that has the incorrect xpath. """
@@ -301,7 +303,7 @@ class Craigslist_Rentals(object):
                     listing_descrip.append(nan_val) ##  listing descriptions
                     attr_vars.append(nan_val) # attribute data
                     date_posted.append(nan_val) #date_posted
-
+                    ## continue iterating (outer for loop) to next rental page from  listing_urls list:
                     continue
 
 
@@ -320,7 +322,6 @@ class Craigslist_Rentals(object):
                 self.parse_html_via_xpath('/html/body/section/section/section/div[2]/p[1]', ids)
 
                 ## Scrape rental price data
-                # self.parse_html_via_xpath("/html/body/section/section/h1/span/span[1]", prices)
                 self.parse_html_via_xpath('//span[@class="price"]', prices)
 
 
@@ -328,12 +329,10 @@ class Craigslist_Rentals(object):
                 self.parse_html_via_xpath("//html/body/section/section/h1/span/small", cities)
                 
                 ##  Scrape number of bedrooms data-
-                # self.parse_html_via_xpath("/html/body/section/section/h1/span/span[2]", bedrooms)
                 self.parse_html_via_xpath('//span[@class="shared-line-bubble"]', bedrooms)
 
 
                 ##  Scrape number of bathrooms data
-                # self.parse_html_via_xpath("/html/body/section/section/section/div[1]/p[1]/span[1]/b[2]", bathrooms)
                 self.parse_html_via_xpath('//span[@class="shared-line-bubble"]', bathrooms)
 
 
@@ -346,7 +345,6 @@ class Craigslist_Rentals(object):
 
                 ## Scrape attribute data:
                 self.parse_html_via_xpath('//p[@class="attrgroup"][last()]', attr_vars)  # the attributes are always the *last* p tag with a class name of "attrgroup" (the number of such p tags differs, ranging from 2-3 typically) 
-
 
 
             ## Aside from a WebDriverException or TimeoutException error, move on with for loop until all urls have been iterated over
@@ -447,34 +445,37 @@ class Craigslist_Rentals(object):
 
         return df_from_dict
 
-    ## Define 2 additional methods that will be called upon by the df_to_CSV_data_pipeline() method:
+    ## Define 2 additional methods that will be called upon or used as arguments (as specified within the main.py executable) by the df_to_CSV_data_pipeline() method:
     
     # make directory to contain scraped data if it does not yet exist:
-    def mk_direc_for_scraped_data(self, parent_direc: str, new_path: str) -> str:
+    def mk_direc_for_scraped_data(self, parent_direc: str, scraped_data_folder: str) -> str:
         """Create directory (if it doesn't exist) to contain the scraped data, with separate directories for specific regions and subregions."""
         parent_direc = parent_direc  # specify the parent directory where we will create new direc
         # use f-strings to add in backslahes as directory separators
         backslashes_separator = "\\"
         # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
-        new_path = f"{new_path}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
-        path_for_csv = os.path.join(parent_direc, new_path)  # specify full path--including the new path we will create
+        new_path = f"{scraped_data_folder}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
+        path_for_csv = os.path.join(parent_direc, new_path)  # specify full path--including the new path we will create (if path does not yet exist)
 
-        if not os.path.exists(path_for_csv):
-            """ Create directory to contain scraped data, if path does not exist"""
-            return os.makedirs(path_for_csv)
+        scraped_data_path = Path(path_for_csv)
+
+        ## Create directory to contain scraped data (if path does not exists):
+        scraped_data_path.mkdir(
+        parents=True,  # look through parent directories
+        exist_ok=True    # create directory *only* if it does *not* already exist
+        )
+        
+        ## Finally, return the path to the scraped data (where the data pipeline will write/save the outputted CSV file)
+        return scraped_data_path
+
 
     # export CSV given directory that exists or has been crated via the mk_direc_for_scraped_data() method:
-    def export_to_csv(self, df: DataFrame, parent_direc_for_csv: str) -> csv:
-        """Save df as CSV in the new path, sans index. Given the mk_direc...() function,
-        we will save the CSV file inside the region and subregion subdirectories
-        (but only specify parent directory containing all of the scraped data).
+    def export_to_csv(self, df: DataFrame, scraped_data_path: str) -> csv:
+        """Save df as CSV in the new path, sans index. Given the mk_direc_for_scraped_data() function,
+        we will save the CSV file inside the region and subregion subdirectories.
         Append today's date and region + subregion names to CSV file name."""
         # specify preface of CSV file name
         csv_preface_name = 'craigslist_rental'
-        # use f-strings to add in backslahes as directory separators
-        backslashes_separator = "\\"
-        # add region and subregion sub-directories to path where we will save the CSV file--NB: add in backslashes_separator to separate different sub-directories:
-        path_for_csv = f"{parent_direc_for_csv}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
 
         # append today's date and the .csv extension to suffix of CSV file name
         today_dt_str = datetime.date.today().strftime("%m_%d_%Y")  # get today's date in 'mm_dd_YYYY' format
@@ -484,36 +485,29 @@ class Craigslist_Rentals(object):
         csv_suffix = '.csv'
         # add region and subregion names to CSV file, and add .csv extension:
         csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{underscore_separator}{csv_suffix}" # append today's date and .csv extension to the file name
-        # export dataframe to CSV. NB: concatenate CSV file name to the path by using os.path.join(). Also, do not export index since it does not contain pertinent data
-        return df.to_csv(os.path.join(path_for_csv, csv_file_name), index=False)
+        # export dataframe to CSV. NB: concatenate CSV file name to the path by using os.path.join(). Also, do not export index since it does not contain pertinent data:
+        return df.to_csv(os.path.join(scraped_data_path, csv_file_name), index=False)
 
-    def df_to_CSV_data_pipeline(self, df: DataFrame) -> csv:
+
+    def df_to_CSV_data_pipeline(self, df: DataFrame,  scraped_data_path: str) -> csv:
         """Clean specific subregions' city names data, create directory for given region and subregion, and export DataFrame containing scraped data to CSV within said subregion directory"""
-        ## create directory to contain scraped data (if not exists):
-        self.mk_direc_for_scraped_data("D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper", "scraped_data")
-
-        ## specify this (potentially new) path to contain the scraped data CSV files
-        scraped_data_path = "D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data"
-
+    
         ## clean data for specific subregions, and export scraped data from Dataframe to CSV file:
         if self.subregion is 'sfc':  # clean San Francisco data
             """If subregion is 'sfc', transform city names data from neighborhood names to 'San Francisco', and remove any data misclassified as being within this county."""
             df = clean_city_names_for_sf(sf_neighborhoods, df) 
-            self.export_to_csv(df, scraped_data_path)
-            return df
+            return self.export_to_csv(df, scraped_data_path)
 
         elif self.subregion is 'scz': # clean Santa Cruz data
             """If subregion is 'scz', remove any data misclassified as being within this county."""
             df = clean_mislabelled_santa_cruz_data(san_cruz_cities, df) # clean 'scz' subregion data
-            self.export_to_csv(df, scraped_data_path)
-            return df
-
+            return self.export_to_csv(df, scraped_data_path)
+            
         elif self.subregion is 'sby':  # clean South Bay data
             """If subregion is 'sby', clean city names data for cities such as San Jose & Santa Clara."""
             df = clean_given_city_names_data('San Jose', sj_neighborhoods, df)    # clean San Jose data
             df = clean_given_city_names_data('Santa Clara', santa_clara_neighborhoods, df)  # clean Santa Clara data
-            self.export_to_csv(df, scraped_data_path)
-            return df
+            return self.export_to_csv(df, scraped_data_path)
 
         elif self.subregion is 'eby':  # clean East Bay data
             """If subregion is 'eby', clean city names data for cities such as Oakland & Hayward."""
@@ -521,10 +515,8 @@ class Craigslist_Rentals(object):
             df = clean_given_city_names_data('Hayward', hayward_neighborhoods, df)  # clean Hayward data
             df = clean_given_city_names_data('Alameda', alameda_neighborhoods, df)  # clean Alameda data
             df = clean_given_city_names_data('Richmond', richmond_neighborhoods, df)  # clean Richmond data
-            self.export_to_csv(df, scraped_data_path)
-            return df
-
+            return self.export_to_csv(df, scraped_data_path)
+            
         else:
             """Ie: do not perform any additional data cleaning if subregion is not SF, Santa Cruz, South Bay, or East Bay"""
-            self.export_to_csv(df, scraped_data_path)
-            return df
+            return self.export_to_csv(df, scraped_data_path)
