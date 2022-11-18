@@ -31,7 +31,7 @@ import inquirer
 from .sfbay_craigslist_subregion_definitions import print_sfbay_subregion_names, inquirer_prompt_user_at_terminal
 
 def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->list:
-    """ Scrape data from HTML element by looking up xpath (via selenium find_elements_by_xpath() method).
+    """ Scrape data from HTML element by looking up xpath (via selenium find_elements('xpath') method).
     a.) Initialize selenium WebDriver, and make get request to access given webpage
     b.) Wait until given HTML element has loaded on page using WebDriverWait() method.
     c.) Then, nitialize an empty list, and scrape the HTML element and extract the element's text data, and append to list."""   
@@ -71,7 +71,7 @@ def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->li
     craigslist_subregions = []  
 
     # b.) scrape the HTML element, extract text, and append to given list
-    for scraped_html in web_driver.find_elements_by_xpath(xpath_arg):
+    for scraped_html in web_driver..find_elements('xpath', xpath_arg):
         craigslist_subregions.append(scraped_html.text)  # parse text data from scraped html element
 
     
