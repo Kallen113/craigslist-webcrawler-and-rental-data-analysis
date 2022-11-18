@@ -88,7 +88,7 @@ class Craigslist_Rentals(object):
 
 
     def parse_html_via_xpath(self, xpath_arg: str, list_to_append: list) -> list:
-        """ Scrape data from HTML element by looking up xpath (via selenium's find_element_by_xpath() method), within a try except control flow clause to account for rental listings that are missing a given HTML element.
+        """ Scrape data from HTML element by looking up xpath (via selenium's find_element("xpath") method), within a try except control flow clause to account for rental listings that are missing a given HTML element.
         a.) Except if a NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--add an 'nan' value indicating missing data.
         b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
         try:
@@ -96,7 +96,7 @@ class Craigslist_Rentals(object):
             wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
             wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 50 seconds
             # b.) scrape the HTML element, extract text, and append to given list
-            scraped_html = self.web_driver.find_element_by_xpath(xpath_arg)
+            scraped_html = self.web_driver.find_element("xpath", xpath_arg)
 
         except (TimeoutException, NoSuchElementException, WebDriverException) as e:
             """If the given rental listing page does not contain given element, append 'nan' value to indicate missing value."""
@@ -108,7 +108,7 @@ class Craigslist_Rentals(object):
 
     def parse_html_via_xpath_and_click(self, xpath_arg: str, list_to_append: list)-> list:
 
-        """ Scrape data from HTML element by looking up xpath (via selenium find_element_by_xpath() method), but then click to reveal the date-time data.
+        """ Scrape data from HTML element by looking up xpath (via selenium find_element("xpath") method), but then click to reveal the date-time data.
         a.) Except if a ElementClickInterceptedException, NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--then wait until given HTML element has loaded on page using WebDriverWait() method.
         b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
 
@@ -117,7 +117,7 @@ class Craigslist_Rentals(object):
             wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
             wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 50 seconds
             # b.) scrape the HTML element, extract text, and append to given list
-            date_posted_click = self.web_driver.find_element_by_xpath(xpath_arg)
+            date_posted_click = self.web_driver.find_element("xpath", xpath_arg)
             # # provide delay to avoid being flagged by server as a bot, before we access each subsequent listing.
             rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
             time.sleep(rand_sl_time)
@@ -157,7 +157,7 @@ class Craigslist_Rentals(object):
             # scrape the HTML element, extract text, and append to list 
 
             # specify xpath to inner listings' data (which includes href URLs); use pipe "or" operator to account for both xpath variants  
-            urls = self.web_driver.find_elements_by_xpath(xpaths_listing_urls)
+            urls = self.web_driver.find_elements("xpath", xpaths_listing_urls)
 
             
            
@@ -175,7 +175,7 @@ class Craigslist_Rentals(object):
                     ## Navigate to each next page, by clicking the 'next page' button (NB: different craigslist regions have one of *two* different xpaths to this button):
 
                     ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
-                    next_page = self.web_driver.find_element_by_xpath(xpaths_next_page_button)   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
+                    next_page = self.web_driver.find_element("xpath", xpaths_next_page_button)   # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
 
                     # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
                     self.web_driver.execute_script("arguments[0].click();", next_page) 
@@ -198,7 +198,7 @@ class Craigslist_Rentals(object):
 
             
                     # specify url xpath; account for both xpath variants using pipe "or" operator
-                    urls = self.web_driver.find_elements_by_xpath(xpaths_listing_urls)
+                    urls = self.web_driver.find_elements("xpath", xpaths_listing_urls)
                     
                     for url in urls:   # iterate over each listing URL on page, and extract href URL
                         listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
@@ -232,7 +232,7 @@ class Craigslist_Rentals(object):
 
            
                 # specify url xpath; account for both xpath variants using pipe "or" operator
-                urls = self.web_driver.find_elements_by_xpath('//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
+                urls = self.web_driver.find_elements("xpath", '//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
                 
                 for url in urls:   # iterate over each listing URL on page, and extract href URL
                     listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
