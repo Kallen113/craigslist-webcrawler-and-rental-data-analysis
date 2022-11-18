@@ -7,6 +7,8 @@ from Rentals.clean_santa_cruz_data import clean_mislabelled_santa_cruz_data, san
 # import inquirer library so we can prompt user in command line to select from a dropdown of values to select the desired subregion on which we will implement the webcrawler.
 import inquirer
 
+
+
 # import functions for selecting SF Bay Area region & subregion names and codes:
 from determine_subregions_for_given_clist_region.sfbay_craigslist_subregion_definitions import print_sfbay_subregion_names, inquirer_prompt_user_at_terminal
 
@@ -23,7 +25,6 @@ def main():
         'San Diego, CA':'https://sandiego.craigslist.org/',
         'Chicago, IL':'https://chicago.craigslist.org/',
         'Seattle, WA':'https://seattle.craigslist.org/',
-        # 'Tacoma, WA':'https://seattle.craigslist.org/tac/',
         'Los Angeles, CA':'https://losangeles.craigslist.org/',
         'Phoenix, AZ':'https://phoenix.craigslist.org/',
         'Portland, OR':'https://portland.craigslist.org/',
@@ -101,17 +102,31 @@ def main():
     craigslist_crawler.load_craigslist_form_URL()
 
     ## Implement the main web crawler via obtain_listing_urls() method, and obtain the rental listing href URLs from the pages of listings (and append to listing_urls list): 
-    # 1st argument of obtain_listing_urls() method: specify all possible xpaths to the first listings on a given page, so we can wait until the listings have loaded before scraping data:
-    xpaths_first_listing_url_on_page = '//*[@class="title-string"] | //*[@id="search-results-page-1"]/ol/li[1]/div/div[1]/div/div[2]/a | //*[@id="search-results-page-1"]/ol/li[1]/div/a[2] | //*[@id="search-results"]/li[1]/div'  # xpath to 1st inner listing hrefs on page. NB: the pipe (ie, |) is used as a Boolean "or" operator so that we can account for any one of multiple possible xpaths!!
-
-    # 2nd argument of obtain_listing_urls() method: specify xpaths for 
-    xpaths_listing_urls = '//a[@class="titlestring"] | //a[@class="post-title"] | //a[@class="result-title hdrlnk"]'
+    # 1st argument of obtain_listing_urls() method: specify xpaths pertaining to rental listing URLs:
+    # pipe operator will be used to pass multiple possible xpaths to the find_elements() selenium method as boolean "or" conditions
+    pipe_operator = '|'
+    # NB: specify all known possible xpaths for the listing urls to a list
+    list_of_xpaths_listing_urls = [
+        '//a[@class="titlestring"]', 
+        '//a[@class="post-title"]', 
+        '//a[@class="result-title hdrlnk"]'
+        ]
+    # argument #1 finalized: concatenate each element in list with pipe operators separating each:
+    xpaths_listing_urls = pipe_operator.join([f'{el}' for el in list_of_xpaths_listing_urls]) 
     
-    # 3rd argument of obtain_listing_urls() method: specify the xpaths for the 'next' page button widget we need to click to navigate to each subsequent page: 
-    next_page_button_xpaths = '//*[@class="bd-button cl-next-page icon-only"] | //*[@class="button next"]'
+    # 2nd argument of obtain_listing_urls() method: specify the xpaths for the 'next' page button widget we need to click to navigate to each subsequent page: 
+    # NB: specify all known possible xpaths for the next page buttons (prior to final page) to a list
+    list_of_xpaths_next_page_button = [
+        '//*[@class="bd-button cl-next-page icon-only"]',
+        '//*[@id="search-toolbars-1"]/div[2]/button[3]', 
+        '//*[@class="button next"]'
+        ]
+    # argument #2 finalized: concatenate each element in list with pipe operators separating each:
+    next_page_button_xpaths = pipe_operator.join([f'{el}' for el in list_of_xpaths_next_page_button]) 
+    
     
     # implement obtain_listing_urls() method to initiate webcrawler:
-    listing_urls = craigslist_crawler.obtain_listing_urls(xpaths_first_listing_url_on_page, xpaths_listing_urls, next_page_button_xpaths)  # method requires 2 arguments: xpaths to first listings on given page, and xpaths to the next page button widgets
+    listing_urls = craigslist_crawler.obtain_listing_urls(xpaths_listing_urls, next_page_button_xpaths)  # method requires 2 arguments: xpaths to rental listing URLs on given page, and xpaths to the next page button widgets
 
     ## scrape the rental listings' data, and store data as dict of lists:
     dict_scraped_lists = craigslist_crawler.scrape_listing_data(listing_urls)  
@@ -122,8 +137,19 @@ def main():
     ## Transform the dictionary of lists to Pandas' DataFrame, and peform additional data cleaning and wrangling:
     df = craigslist_crawler.dict_to_df_pipeline(dict_scraped_lists)
 
-    ## Execute DataFrame to CSV data pipeline,after cleaning city names data for specific subregions 
-    craigslist_crawler.df_to_CSV_data_pipeline(df)
+    ## DataFrame to CSV data pipeline,after cleaning city names data for specific subregions 
+    # specify parent path of the project:
+    parent_path = "C:\\Users\\kjall\Coding and Code Projects\\craigslist-webcrawler-master"
+    # specify the name of the folder to contain the scraped data:
+    scraped_data_folder = "scraped_data"
+
+    ## Create directory to contain scraped data (if path does not exists):
+
+    ## Specify complete path for the scraped data--ie, by referencing the given region & subregion we've selected via CLI for given WebDriver session:
+    scraped_data_path = craigslist_crawler.mk_direc_for_scraped_data(parent_path, scraped_data_folder)
+
+    ## Implement data pipeline:
+    return craigslist_crawler.df_to_CSV_data_pipeline(df, scraped_data_path)
 
 if __name__== "__main__":
     main()
