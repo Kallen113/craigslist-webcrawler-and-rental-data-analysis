@@ -7,6 +7,8 @@ from Rentals.clean_santa_cruz_data import clean_mislabelled_santa_cruz_data, san
 # import inquirer library so we can prompt user in command line to select from a dropdown of values to select the desired subregion on which we will implement the webcrawler.
 import inquirer
 
+#import os library so we can reference thw current working directory
+import os
 
 
 # import functions for selecting SF Bay Area region & subregion names and codes:
@@ -139,8 +141,10 @@ def main():
 
     ## DataFrame to CSV data pipeline,after cleaning city names data for specific subregions 
     # specify parent path of the project:
-    parent_path = "C:\\Users\\kjall\Coding and Code Projects\\craigslist-webcrawler-master"
-    # specify the name of the folder to contain the scraped data:
+    parent_path = os.getcwd()
+
+    # parent_path = "C:\\Users\\kjall\Coding and Code Projects\\craigslist-webcrawler-master"
+    # specify the name of the folder to contain the scraped data: 
     scraped_data_folder = "scraped_data"
 
     ## Create directory to contain scraped data (if path does not exists):
