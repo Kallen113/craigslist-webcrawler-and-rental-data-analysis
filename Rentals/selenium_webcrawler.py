@@ -308,10 +308,10 @@ class Craigslist_Rentals(object):
 
 
             # terminate for loop if the user closes the webdriver browser--at any point of iteration--or if the internet connection is lost:                                    
-            except (WebDriverException, TimeoutException) as e:   # ie: if webdriver connection cannot be established or has been lost
+            except (WebDriverException, TimeoutException, KeyboardInterrupt) as e:   # ie: if webdriver connection cannot be established or has been lost, or if user interrupts script via Keyboard interrupt
                 print('\n\nNB: The WebDriver connection has been lost:\n')
 
-                print('The internet connection has been lost or WebDriver browser has been closed,\nresulting in a WebDriverException and/or TimeoutException.')
+                print('The internet connection has been lostm, WebDriver browser has been closed, or a keyboard interrupt has occured \nresulting in a WebDriverException, TimeoutException, or KeyboardInterrupt.')
                 print('\nAll previously scraped listings for this session will be saved and outputted to CSV.')
                 break   #  break for loop, and proceed to data transformation, cleaning and data pipelines
 
@@ -450,7 +450,6 @@ class Craigslist_Rentals(object):
     # make directory to contain scraped data if it does not yet exist:
     def mk_direc_for_scraped_data(self, parent_direc: str, scraped_data_folder: str) -> str:
         """Create directory (if it doesn't exist) to contain the scraped data, with separate directories for specific regions and subregions."""
-        parent_direc = parent_direc  # specify the parent directory where we will create new direc
         # use f-strings to add in backslahes as directory separators
         backslashes_separator = "\\"
         # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
