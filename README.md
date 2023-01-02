@@ -15,34 +15,69 @@ There are essentially 3 phases to this project, although the first 2 phases are 
 
 ## Software Requirements and Packages Used for this Program:
 
-To implement the Python selenium webcrawler program, we need to have the following software: Python 3 (at least version >= 3.7), Anaconda (if you wish to use Jupyter notebooks, especially for the 3rd phase/data analysis), various packages for Python 3 (as detailed in the sections below), and a command-line interface such as bash or Windows Powershell. While optional, I would also recommend using a code editor such as VS Code.
+To implement the Python selenium webcrawler program, we need to have the following software: 
 
-When actually running any portion or phase of this project's scripts, I would highly recommend using a Python virtual environment. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
+NB: Note that I'm using a Windows OS, so some of these software and CLIs may differ if you have a Mac or other non-Windows OS.
+
+a) Python 3 (ideally, version >= 3.9); 
+
+b) Anaconda: for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment. ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks so wwe can save our data visualizations, charts, and regression results;
+
+c) Various packages for Python 3 (as detailed in the sections below), which we can install directly from the requirements.txt once we have activated a conda (Python) environment;  
+
+
+d) A command-line interface (CLI) such as Windows PowerShell. 
+
+----di) Given that a conda virtual environment is recommended for this project, I would especially recommend using *Anaconda PowerShell Prompt* as your CLI. While a regular PowerShell prompt can be used, in order to use conda commands or virtual environments directly via a regular PowerShell CLI (ie, not an Anaconda PowerShell Prompt), you would need to place your installation of Anaconda into your local machine's System PATH.  
+
+e) (Optional): While optional, I would also recommend using a code editor such as VS Code, since we can use Jupyter notebooks and see our visualizations and regression results directly within the code editor as opposed to only using a CLI (which does not allow for plots to be displayed unless we use outside tools or GUIs).
+
+When actually running the webcrawler, I would highly recommend using a conda virtual environment for Python. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
 
 ### How do we install Python packages?
 
-We do *not* need to manually install Python packages. Instead, we can programmatically install Python packages. To do this--assuming we are using a Python virtual environment for the project--we need to install the packages via a command-line terminal by referencing the requirements.txt file that has been added to the parent CraigslistWebScraper directory.
+We do *not* need to manually install Python packages. Instead, we can programmatically install Python packages using the files from this repo by running pip install from the requirements.txt, once we've activated a virtual environment.
+
+While we can use a regular Python virtual environment for the project, I would *instead* recommend using a conda virtual environment for Python. If we used regular Python virtual environments instead, we would need to install C++ dependencies separately, but using a conda environment will satisfy those requirements. (The only trade-offs to using a aconda virtual environment are that a) we need to install Anaconda & b) it takes longer to initially create a conda vs a regular Python virtual environment). 
+
+To install *all* required packages, we need to install the packages via a CLI by referencing the requirements.txt file that has been added to the parent CraigslistWebScraper directory of this repo.
 
 Namely, we need to take the following 3 steps:
 
-1.) Change to the parent CraigslistWebScraper directory (if needed).
+1.) Open a CLI: again, I'd recommend an Anaconda PowerShell Prompt.
 
-2.) Activate the Python virtual environment.
--- For example, in Windows Powershell say the Python virtual environment is called 'venv':
+2.) Change the directory to the parent CraigslistWebScraper directory.
+
+3.) Create a conda virtual environment, and ensure the Python version if >= 3.7 (NB: you only need to do this step once)
+
+(A regular Python virtual environment can be created instead, but again this is not recommended since you'd need to handle C++ dependencies separately)
+
+Ex: Create a conda virtual env called "clistenv" with Python version 3.9:
 <<<
-venv\Scripts\activate.ps1
+### conda create -n clistenv python=3.9 anaconda
 
-3.) Finally, install all of the needed packages by using the pip install command, and referencing the requirements.txt file as the argument: 
+
+And, type "y" when prompted to do so to finalize creation of the environment.
+
+4.) Activate the conda virtual environment after it has been created:
+
+Ex: in an Anaconda Powershell Prompt say the conda virtual environment is again called 'clistenv':
 <<<
-pip install -r requirements.txt
+### conda activate clistenv
 
-See below for a list of the main Python packages that we will need, although take note that the data analysis portion of the program--ie, the Phase 3--may vary depending on specific user demands and needs. For example, some individuals may not want to use ML models, in which case the sklearn library will clearly be unncessary. 
+5.) Finally, install *all* of the needed packages by using the pip install command, and referencing the requirements.txt file as the argument: 
+<<<
+### pip install -r requirements.txt
 
-4.) When you have finished using the webcrawler using a CLI such as PowerShell, use the deactivate command to turn off the virtual env:
+
+
+6.) When you have finished using the webcrawler using a CLI such as PowerShell, use the deactivate command to turn off the virtual env:
 <<<
 deactivate
 
 ### Main Python packages for the webcrawler & scraper:
+
+See below for a list of the most important Python packages that we will use for this webcrawler project:
 
 Webcrawler, web scraping, and web access libraries & modules: 
 selenium, beautifulsoup, & urllib.request 
@@ -56,9 +91,9 @@ os, time, random, datetime
 
 ## How do We Actually Implement the Webcrawler?
 
-To implement the Python selenium webcrawler--ie, just the 1st phase of the project itself--we need to execute the main.py script as a module in a command-line terminal such as using bash, Powershell, etc. 
+To implement the Python selenium webcrawler, we need to execute the main.py script as a module in a command-line terminal such as using Powershell. 
 
-To be clear, this main.py script is found within the CraigslistWebScraper directory, which is this project's root directory. 
+To be clear, this main.py executable is found within the CraigslistWebScraper directory, which is this project's root directory. 
 
 How do we use a terminal to implement a Python module instead of (say) running a regular Python script?
 
@@ -66,7 +101,7 @@ Within a command-line terminal, we need to use: python -m script_name_without_py
 
 Ie, for our specific program, we need to do the following:
 <<<
-python -m main
+### python -m main
 
 Why use a Python module? The reason we are using main.py as a module is that we are importing several scripts, including a Python class, to be used for the webcrawler program. If we merely ran main.py as a script, the program would not work since we would not be able to import and use a Python class and all needed functions imported from other scripts.   
 
