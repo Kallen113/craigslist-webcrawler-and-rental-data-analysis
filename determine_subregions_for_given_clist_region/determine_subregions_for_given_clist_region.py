@@ -71,7 +71,7 @@ def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->li
     craigslist_subregions = []  
 
     # b.) scrape the HTML element, extract text, and append to given list
-    for scraped_html in web_driver..find_elements('xpath', xpath_arg):
+    for scraped_html in web_driver.find_elements('xpath', xpath_arg):
         craigslist_subregions.append(scraped_html.text)  # parse text data from scraped html element
 
     
