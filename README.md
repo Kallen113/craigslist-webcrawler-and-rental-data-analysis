@@ -53,8 +53,9 @@ Namely, we need to take the following 3 steps:
 (A regular Python virtual environment can be created instead, but again this is not recommended since you'd need to handle C++ dependencies separately)
 
 Ex: Create a conda virtual env called "clistenv" with Python version 3.9:
+
 <<<
-### conda create -n clistenv python=3.9 anaconda
+#### conda create -n clistenv python=3.9 anaconda
 
 
 And, type "y" when prompted to do so to finalize creation of the environment.
@@ -62,18 +63,21 @@ And, type "y" when prompted to do so to finalize creation of the environment.
 4.) Activate the conda virtual environment after it has been created:
 
 Ex: in an Anaconda Powershell Prompt say the conda virtual environment is again called 'clistenv':
+
 <<<
-### conda activate clistenv
+#### conda activate clistenv
 
 5.) Finally, install *all* of the needed packages by using the pip install command, and referencing the requirements.txt file as the argument: 
+
 <<<
-### pip install -r requirements.txt
+#### pip install -r requirements.txt
 
 
 
 6.) When you have finished using the webcrawler using a CLI such as PowerShell, use the deactivate command to turn off the virtual env:
+
 <<<
-deactivate
+#### deactivate
 
 ### Main Python packages for the webcrawler & scraper:
 
@@ -100,8 +104,9 @@ How do we use a terminal to implement a Python module instead of (say) running a
 Within a command-line terminal, we need to use: python -m script_name_without_py_extension.
 
 Ie, for our specific program, we need to do the following:
+
 <<<
-### python -m main
+#### python -m main
 
 Why use a Python module? The reason we are using main.py as a module is that we are importing several scripts, including a Python class, to be used for the webcrawler program. If we merely ran main.py as a script, the program would not work since we would not be able to import and use a Python class and all needed functions imported from other scripts.   
 
