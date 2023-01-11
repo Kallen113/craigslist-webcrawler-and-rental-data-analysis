@@ -3,13 +3,13 @@
 
 This repo comprises a Python web crawler of craigslist rental listings data using the selenium and requests library to scrape rental listings data. 
 
-There are essentially 3 phases to this project, although the first 2 phases are the primary focus: 1) A webcrawler & webscraper of rental listings data; 2.) Data cleaning and a data pipeline using Pandas and pyodbc to insert data from a Pandas' DataFrame to a SQL Server table; and 3.) Using the data scraped via the webcrawler program, I will implement a data analysis project and visualizations, with a focus on examining rental prices at the city level. In other words, I will attempt to answer the followiong question: For rental listings in the San Francisco Bay Area (SF Bay Area) cities, what are the major determinants of rental prices, and how well can we predict rental prices using the scraped data? 
+There are essentially 3 phases to this project, although the first 2 phases are the primary focus: 1) Webcrawler: A webcrawler & webscraper of rental listings data; 2.) CSV to SQL Server data pipeline: Data cleaning and a data pipeline using Pandas and pyodbc to insert data from a Pandas' DataFrame to a SQL Server table; and 3.) Data Analysis, Visualizations, and Regression Analytsis: Using the data scraped via the webcrawler program, I implement data analysis, visualizations, and statistical analysis with a focus on examing rental prices at the city level. In other words, I will attempt to answer the following question: For rental listings in the San Francisco Bay Area (SF Bay Area) cities, what are the major determinants of rental prices, and how well can we predict rental prices using the scraped data? 
 
 ## Describing the components of the project in more detail:
 
-1) For the first phase, I will use the selenium (primarily) and beautifulsoup libraries to iterate over various rental listings within each of the SF Bay Area's subregions, such as the Peninsula, South Bay, and East Bay. This program iterates over each rental listing within a given subregion, and then scrapes data on various attributes such as the number of bedrooms, number of bathrooms, squarefeet (ie, the size of the rental home or apartment, etc.), garage or parking options, etc. After some additional parsing using the Pandas library, the scraped data are exported to a CSV file, which is organized into directories that are ordered by subregion.  
+1) Webcrawler & CSV data pipeline: For the first phase, I will use the selenium and requests libraries to iterate over various craigslist rental listings within each of the SF Bay Area's subregions, such as the Peninsula, South Bay, and East Bay. This program iterates over each rental listing within a given subregion, and then scrapes data on various attributes such as the number of bedrooms, number of bathrooms, squarefeet (ie, the size of the rental home or apartment, etc.), garage or parking options, etc. After some additional data cleaning and parsing using the Pandas library, the scraped data are exported to a CSV file, which will automatically be organized into subdirectories that are ordered by subregion.   
 
-2) For the 2nd phase, I will create an ETL data pipeline. The ETL will import one or more of the CSV files--ie, the files outputted by the selenium webcrawler program--as a concatenated Pandas' DataFrame. Then, using Pandas and numpy, the ETL script will clean and transform the dataframe. Finally, after deduplicating, cleaning, and wrangling the dataset, the script will insert the rental listings data into a SQL Server table.
+2) CSV to SQL data pipeline: For the 2nd phase, I have created an ETL data pipeline. The ETL will import one or more of the CSV files--ie, the files outputted by the selenium webcrawler program--as a concatenated Pandas' DataFrame. Then, using Pandas and numpy, the ETL script will clean and transform the dataframe. Finally, after deduplicating, cleaning, and wrangling the dataset, the script will insert the rental listings data into a SQL Server table.
 
 3) For the 3rd phase, we can readily import various rental listings data from the SQL Server table, given we have already run the Python selenium webcrawler program and ETL scripts at least once, respectively. After importing the data, we can then implement various data visualizations and analysis. However, take in mind that this phase of the project is more of a demonstrative purpose of use case for the data and project. In other words, the data analysis portion of this project is mainly to demonstrate what we can do with the data we have scraped using the webcrawler program. 
 
@@ -30,7 +30,9 @@ d) A command-line interface (CLI) such as Windows PowerShell or Anaconda PowerSh
 
 ----di) Given that a conda virtual environment is recommended for this project, I would especially recommend using *Anaconda PowerShell Prompt* as your CLI. While a regular PowerShell prompt can be used, in order to use conda commands or virtual environments directly via a regular PowerShell CLI (ie, not an Anaconda PowerShell Prompt), you would need to place your installation of Anaconda into your local machine's System PATH.  
 
-e) SSMS & SQL Server: You can download the latest version of SSMS here: [SSMS download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms?view=sql-server-ver16). This is required to implement the CSV (via Pandas) to SQL data pipeline (see Pandas_and_SQL_ETL_and_data_cleaning.py from the data_pipelines subfolder). A different SQL RDBMS--e.g., Oracle SQL--can be used instead of SQL Server, but the SQL RDBMS must be compatible with the pyodbc package's API. Otherwise, the Pandas_and_SQL_ETL_and_data_cleaning.py would need to be revised for your purposes. 
+e) SQL Server & SSMS:  can download the latest version of SQL Server here: [SQL Server download](https://www.microsoft.com/en-us/sql-server/sql-server-downloads). Also, to download SSMS, go to: [SSMS download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms?view=sql-server-ver16). 
+
+SQL Server is required to implement the CSV (via Pandas) to SQL data pipeline (see Pandas_and_SQL_ETL_and_data_cleaning.py from the data_pipelines subfolder). SSMS is optional, but provides a GUI to more easily implement SQL Server queries, create tables, etc. A different SQL RDBMS--e.g., Oracle SQL--can be used instead of SQL Server, but the SQL RDBMS must be compatible with the pyodbc package's API. Otherwise, the Pandas_and_SQL_ETL_and_data_cleaning.py would need to be revised for your purposes. 
 
 f) (Optional): While optional, I would also recommend using a code editor such as VS Code, since we can use Jupyter notebooks and see our visualizations and regression results directly within the code editor as opposed to only using a CLI (which does not allow for plots to be displayed unless we use outside tools or GUIs).
 
@@ -112,14 +114,13 @@ Ie, for our specific program, we need to do the following:
 
 Why use a Python module? The reason we are using main.py as a module is that we are importing several scripts, including a Python class, to be used for the webcrawler program. If we merely ran main.py as a script, the program would not work since we would not be able to import and use a Python class and all needed functions imported from other scripts.   
 
-
 ## A Brief Note About the Regions and subregions that this Webcrawler Project Focuses on: 
 
 The focus of this project is on SF Bay Area rental listings (ie, for the sfbay craigslist site) data, but the webcrawler and webscraping functions and scripts can be fairly easily adapted to crawl over data from other regions and metropolitan areas, such as NYC, Seattle, etc. 
 
 ## What if I Want to Examine Rental Listings from Metropolitan Areas Outside of the SF Bay Area?
 
-The main.py script--assuming we run the program as a Python module (as described above)--prompts the user via command-line to select one of 18 metropolitan regions (including the SF Bay Area). After selecting the metropolitan region, the user will then be prompted to select a subregion-- for example, district of columbia is a subregion within the Washington, DC (parent) region. 
+The main.py script--assuming we run the program as a Python module (as described above)--prompts the user via command-line to select one of 18 metropolitan regions (including the SF Bay Area). After selecting the metropolitan region, the user will then be prompted to select a subregion--for example, "district of columbia" is a subregion within the Washington, DC (parent) region. 
 
 Here's a partial list of (parent) metropolitan regions:
 
@@ -129,26 +130,35 @@ SF Bay Area, CA; San Diego, CA; Chicago, IL; Seattle, WA, Boston, MA, etc.
 
 What exactly is the file structure used for this project?
 
-We have a parent directory called the CraigslistWebScraper directory, which contains the main.py script that implements the webcrawler. Within this parent directory, we have several sub-directories:
+We have a parent directory called the CraigslistWebScraper directory, which contains the main.py executable that implements the webcrawler. Within this parent directory, we have several sub-directories:
 
 a.) Rentals: this contains most of the selenium webcrawler script, including the Craigslist_Rentals object, which specifies a customized URL for searching user-specified regions, subregions, minimum rental price, and maximum rental price filters for the rental listing webcrawler. 
 
 b.) scraped_data: this contains 1 or more folders that will contain all of the data the Python selenium webcrawler and scraper will scrape and parse from the rental listings data. 
 
-c.) data_pipelines: This contains several scripts associated with the Phase 2 of this project. For example, the SQL_create_table_rental.py script is a one-off script that creates a SQL Server table that can be used to store all of the scraped data. The Pandas_and_SQL_ETL_and_data_cleaning.py script, however, is a multi-use script that implements the CSV to Pandas to SQL Server ETL data pipeline. 
+c.) data_pipelines: This contains several scripts associated with the Phase 2 of this project. For example, the SQL_create_table_rental.py script is a one-off script (ie, it's intended for a one-time use) that creates a SQL Server table that can be used to store all of the scraped data. This script must be run in order to enable the main CSV to SQL data pipeline script. Once the one-off script has been executed, we can start running the Pandas_and_SQL_ETL_and_data_cleaning.py script *each time* we want to insert newly-scraped data into a SQL Server table. This is a multi-use script that implements the CSV to Pandas to SQL Server ETL data pipeline. 
 
 d.) SQL_config: This folder contains config.json, which specifies the SQL Server username and other configuration credentials that we need to refer to in order to connect Python to a SQL Server database using the pyodbc library. The reason for using a json file to store all of the SQL Server configuration details is so we do not need to manually enter the SQL Server credentials each time we need to access the SQL Server table. 
 
 e.) data_analysis: This comprises the Phase 3 scripts. Namely, this subdirectory contains the data analysis and visualization scripts and Jupyter notebooks. 
 
-
 ## Additional Notes on Data Cleaning and the CSV to Pandas to SQL Server ETL Data Pipeline:
 For the data cleaning, ETL data pipeline, and data analysis aspects of this project, I wiill include both the main Python scripts as well as some Jupyter notebooks to demonstrate some of the data cleaning functions, data pipeline, and analysis in action.  
 
-For the data cleaning and ETL data pipeline, the script first imports one or more of the CSV files--which contain the scraped rental listings data-- into a Pandas' DataFrame. After cleaning and wrangling the data, the data are then inserted into a SQL Server table. 
+For the data cleaning and ETL data pipeline--ie, the , the script first imports one or more of the CSV files--which contain the scraped rental listings data-- into a Pandas' DataFrame. After cleaning and wrangling the data, the data are then inserted into a SQL Server table. 
 
 For data cleaning, I rely primarily on the Pandas and numpy libraries, exploiting vectorized methods where possible, to clean the data. After performing several data cleaning procedures and functions, such as deduplicating listings data and transforming specific columns to specific data types, the program then implements the data pipeline. Namely, we start with the CSV files  I employ the pyodbc library to enable Python to interact with a MS SQL Server database. After creating a SQL table and cleaning the rental listings data, the scripts will insert the data from a Pandas' DataFrame into the SQL Server table. ETL of scraped data. 
 
+FAQ: 
+
+Where can I find the data that the webcrawler has outputted to CSV?
+You can find these data within the (possibly newly created) scraped_data subdirectory. This subdirectory will be located within the root directory.
+
+How do I setup a SQL Server table for the CSV to SQL data pipeline?
+As stated above, you need to have SQL Server installed, and a SQL database server needs to be setup before running any of the data_pipelines scripts. Once a database server has been created and you have created a username and password for yourself, change the config.json from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection in order to connect to the given SQL database and make changes and/or run queries from the table within your local machine's database. The config.json on this repo is shown for illustrative purposes only.
+
+What if I'm using Mac and/or I want to use a different SQL RDBMS other than SQL Server for the ETL data pipelines?
+You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Python library that this project uses for the CSV to SQL data pipelines.
 
 ## Possible Use Cases:
 
@@ -157,10 +167,7 @@ One way to use this webcrawler and data cleaning program is for individuals who 
 
 ## Additional features to add to the webcrawler:
 
-To facilitate a webcrawler for non-SF Bay Area regions, I might add a new script to the project that would scrape data on the subregion names for a given region--e.g., subregions of Chicago or NY. 
-
 To further mitigate bot detection, I might want add cursor movements and scroll-downs to help mimic human-like browser activity. I could add this to the finally code block--ie, within the try...except...else...finally nested within the listing url for loop. 
-
 
 
 ### Legal Info & Disclaimer:
