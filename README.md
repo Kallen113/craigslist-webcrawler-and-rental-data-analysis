@@ -15,24 +15,26 @@ There are essentially 3 phases to this project, although the first 2 phases are 
 
 ## Software Requirements and Packages Used for this Program:
 
-To implement the Python selenium webcrawler program, we need to have the following software: 
+To implement the Python selenium webcrawler program and the CSV to SQL data pipeline, we need to have the following software: 
 
 NB: Note that I'm using a Windows OS, so some of these software and CLIs may differ if you have a Mac or other non-Windows OS.
 
 a) Python 3 (ideally, version >= 3.9); 
 
-b) Anaconda: for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment. ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks so wwe can save our data visualizations, charts, and regression results;
+b) Anaconda: We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment. ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks so wwe can save our data visualizations, charts, and regression results;
 
 c) Various packages for Python 3 (as detailed in the sections below), which we can install directly from the requirements.txt once we have activated a conda (Python) environment;  
 
 
-d) A command-line interface (CLI) such as Windows PowerShell. 
+d) A command-line interface (CLI) such as Windows PowerShell or Anaconda PowerShell Prompt. 
 
 ----di) Given that a conda virtual environment is recommended for this project, I would especially recommend using *Anaconda PowerShell Prompt* as your CLI. While a regular PowerShell prompt can be used, in order to use conda commands or virtual environments directly via a regular PowerShell CLI (ie, not an Anaconda PowerShell Prompt), you would need to place your installation of Anaconda into your local machine's System PATH.  
 
-e) (Optional): While optional, I would also recommend using a code editor such as VS Code, since we can use Jupyter notebooks and see our visualizations and regression results directly within the code editor as opposed to only using a CLI (which does not allow for plots to be displayed unless we use outside tools or GUIs).
+e) SSMS & SQL Server: You can download the latest version of SSMS here: [SSMS download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms?view=sql-server-ver16). This is required to implement the CSV (via Pandas) to SQL data pipeline (see Pandas_and_SQL_ETL_and_data_cleaning.py from the data_pipelines subfolder). A different SQL RDBMS--e.g., Oracle SQL--can be used instead of SQL Server, but the SQL RDBMS must be compatible with the pyodbc package's API. Otherwise, the Pandas_and_SQL_ETL_and_data_cleaning.py would need to be revised for your purposes. 
 
-When actually running the webcrawler, I would highly recommend using a conda virtual environment for Python. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
+f) (Optional): While optional, I would also recommend using a code editor such as VS Code, since we can use Jupyter notebooks and see our visualizations and regression results directly within the code editor as opposed to only using a CLI (which does not allow for plots to be displayed unless we use outside tools or GUIs).
+
+When actually running the webcrawler, I would highly recommend using a conda virtual environment for Python. This type of virtual environment can only be created if we have installed Anaconda. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
 
 ### How do we install Python packages?
 
