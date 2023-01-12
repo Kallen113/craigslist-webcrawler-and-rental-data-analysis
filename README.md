@@ -21,7 +21,7 @@ NB: Note that I'm using a Windows OS, so some of these software and CLIs may dif
 
 a) Python 3 (ideally, version >= 3.9); 
 
-b) Anaconda: We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment. ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks so wwe can save our data visualizations, charts, and regression results;
+b) Anaconda: We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment. ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks so we can save our data visualizations, charts, and regression results;
 
 c) Various packages for Python 3 (as detailed in the sections below), which we can install directly from the requirements.txt once we have activated a conda (Python) environment;  
 
