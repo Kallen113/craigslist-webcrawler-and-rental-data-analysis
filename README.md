@@ -156,20 +156,64 @@ For the data cleaning and ETL data pipeline--ie, the , the script first imports 
 
 For data cleaning, I rely primarily on the Pandas and numpy libraries, exploiting vectorized methods where possible, to clean the data. After performing several data cleaning procedures and functions, such as deduplicating listings data and transforming specific columns to specific data types, the program then implements the data pipeline. Namely, we start with the CSV files  I employ the pyodbc library to enable Python to interact with a MS SQL Server database. After creating a SQL table and cleaning the rental listings data, the scripts will insert the data from a Pandas' DataFrame into the SQL Server table. ETL of scraped data. 
 
-FAQ: 
+## FAQ: 
+
+1) Why is it that when I run the webcrawler program--ie, via <<< python -m main--the program is not running properly on my local machine? For example, I get a ModuleNotFoundError such as: "No module named 'selenium'" or "No module named 'pandas', etc.?
+
+I highly recommend that you use a conda virtual environment via an Anaconda PowerShell Prompt CLI, not a standard Python virtual environment or regular Windows PowerShell since you'd otherwise need to install C++ dependencies separately and manually.
+
+However, if you are already using a conda virtual environment and are using an Anaconda PowerShell Prompt for your CLI, then double-check whether you have installed all required Python packages on the conda environment. As mentioned earlier, you do not have to manually install each Python package individually, but instead install from the requirements.txt file that is saved to the root directory of this project. As is standard practice, this .txt file contains a list of all required Python packages, including the versions of the packages I've used for this project. 
+
+TLDR: To install all required Python packages to a conda virtual environment, do the following 3 steps:
+
+a) Change the directory to the root directory of this webcrawler project:
+<<< cd path_to_root_directory_of_webcrawler_propject
+
+b) activate the conda virtual environment:
+
+<<< conda activate clist_env
+
+& 
+
+c) Install the Python packages from the requirements.txt:
+
+<<< pip install -r requirements.txt
+
+After activating the conda virtual environment, you can check which Python packages have been installed to the environment. After activating your conda virtual environment, you can run the following command to list all Python packages that are currently installed on the conda environment:
+
+<<< conda list
 
 Where can I find the data that the webcrawler has outputted to CSV?
-You can find these data within the (possibly newly created) scraped_data subdirectory. This subdirectory will be located within the root directory.
+
+You can find these data within the scraped_data subdirectory. This folder will automatically be created after running the webcrawler program for the first time (ie, executing main.py via <<< python -m main at command line). This subdirectory will be located directly within the root directory. Any regions and then subregions will have their own additional subdirectories located within the scraped_data folder. 
 
 How do I setup a SQL Server table for the CSV to SQL data pipeline?
-As stated above, you need to have SQL Server installed, and a SQL database server needs to be setup before running any of the data_pipelines scripts. Once a database server has been created and you have created a username and password for yourself, change the config.json from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection in order to connect to the given SQL database and make changes and/or run queries from the table within your local machine's database. The config.json on this repo is shown for illustrative purposes only.
+
+As stated in earlier sections, you need to have SQL Server installed, and a SQL database server needs to be setup before running any of the data_pipelines scripts. See the link above on how to install SQL Server and do the initial server setup. 
+
+Once a database server has been created and you have created a username and password for yourself, change the *config.json* from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection. Via this pyodbc connection, Python can connect to the given SQL database and make changes and/or run queries from a SQL table located within your local machine's database. To be clear, the config.json on this repo is shown for illustrative purposes only and does not reflect any real-life username or password.
 
 What if I'm using Mac and/or I want to use a different SQL RDBMS other than SQL Server for the ETL data pipelines?
+
 You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Python library that this project uses for the CSV to SQL data pipelines.
 
 ## Possible Use Cases:
 
-One way to use this webcrawler and data cleaning program is for individuals who are looking for a new place to rent within a given region. For example, after running the webcrawler and data cleaning/pipeline portions of the project, you can then check for the least expensive rental prices within a given city or region, or to look for rental listings that match a specific set of characteristics or amenities that you desire.
+One way to use this webcrawler and data cleaning program is for individuals who are looking for a new place to rent within a given region. For example, after running the webcrawler and data pipeline portions of the project, you can then check for the least expensive rental prices within a given city or region, or to look for rental listings that match a specific set of characteristics or amenities that you desire. With some basic knowledge of SQL, you can run queries that match the amenities you would want.
+
+Quick SQL query examples: Show the rental prices & sqft for January 2023 rental listings from San Francisco that are 1-bedroom apartments with 1 full (not half) bathroom:
+>>>
+SELECT price
+FROM rental
+WHERE city = 'San Francisco'
+AND bedrooms = 1 
+AND bathrooms = 1
+AND apt =1 
+AND MONTH(date_posted) = 1
+AND YEAR(date_posted) = 2023;
+
+What are the 10 cheapest such apartments from SF for January 2023?:
+SELECT...
 
 
 ## Additional features to add to the webcrawler:
