@@ -183,19 +183,21 @@ After activating the conda virtual environment, you can check which Python packa
 
 <<< conda list
 
-Where can I find the data that the webcrawler has outputted to CSV?
+2) Where can I find the data that the webcrawler has outputted to CSV?
 
 You can find these data within the scraped_data subdirectory. This folder will automatically be created after running the webcrawler program for the first time (ie, executing main.py via <<< python -m main at command line). This subdirectory will be located directly within the root directory. Any regions and then subregions will have their own additional subdirectories located within the scraped_data folder. 
 
-How do I setup a SQL Server table for the CSV to SQL data pipeline?
+3) How do I setup a SQL Server table for the CSV to SQL data pipeline?
 
 As stated in earlier sections, you need to have SQL Server installed, and a SQL database server needs to be setup before running any of the data_pipelines scripts. See the link above on how to install SQL Server and do the initial server setup. 
 
 Once a database server has been created and you have created a username and password for yourself, change the *config.json* from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection. Via this pyodbc connection, Python can connect to the given SQL database and make changes and/or run queries from a SQL table located within your local machine's database. To be clear, the config.json on this repo is shown for illustrative purposes only and does not reflect any real-life username or password.
 
-What if I'm using Mac and/or I want to use a different SQL RDBMS other than SQL Server for the ETL data pipelines?
+The included scripts in the data_pipelines subdirectory can then be used first to a) create a new SQL database and b) create the SQL table that will store the scraped data from the webcrawler.
 
-You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Python library that this project uses for the CSV to SQL data pipelines.
+4) What if I'm using Mac and/or I want to use a different SQL RDBMS other than SQL Server for the ETL data pipelines?
+
+You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Python library that this project uses for the CSV to SQL data pipelines. Some of the scripts from the data_pipelines subdirectory might need to be modified, but most of the code should still run properly without any changes.
 
 ## Possible Use Cases:
 
