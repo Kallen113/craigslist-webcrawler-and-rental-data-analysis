@@ -49,7 +49,9 @@ def clean_scraped_bathroom_data(dict_scraped_lists):
     # return [val[:-2] if bath_substr in val else 'nan' for val in bathroom_list]  
     return [val.strip().split('/')[1].strip().rsplit(bath_substr,1)[0] if bath_substr in val else 'nan' for val in dict_scraped_lists['bathrooms']]  # remove whitespace, then split based on backslash delimiter, index to 2nd element, remove whitespace, and remove bath_substr from list
 
-
+def clean_scraped_date_posted_data(dict_scraped_lists):
+    """ Clean datetime data (given we are no longer clicking to get the date): Namely: delete the "T" char that separates the year-month part of the datetime from the hour-minute-seconds datetime,  and replace the 'T' char with an empty space."""
+    return [val.replace('T', ' ') for val in dict_scraped_lists['date_posted']]
 
 
 ## Create indicator variables using numpy and Pandas' str.contains() based on scraped rental listing attributes and descriptions  
