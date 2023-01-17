@@ -29,7 +29,7 @@ from .clean_city_names import clean_city_names_for_sf, sf_neighborhoods, clean_g
 from .clean_santa_cruz_data import clean_mislabelled_santa_cruz_data, san_cruz_cities  # import from same directory (ie,. dot prefix) a function to remove rows that are misclassified as 'scz', and import list of Santa Cruz county cities
 
 # import data cleaning script  from the data_cleaning sub-directory
-from data_cleaning.scraper_and_data_cleaning_functions import clean_scraped_sqft_data, clean_scraped_bedroom_data, clean_scraped_bathroom_data, clean_scraped_cities_data, parse_kitchen_data, clean_listing_ids, parse_attrs, clean_bedroom_studio_apt_data, clean_listing_ids_and_remove_nan_substr, print_scraped_sanity_checks # various data cleaning and HTML-parser functions via selenium methods:
+from data_cleaning.scraper_and_data_cleaning_functions import clean_scraped_sqft_data, clean_scraped_bedroom_data, clean_scraped_bathroom_data, clean_scraped_cities_data, clean_scraped_date_posted_data, parse_kitchen_data, clean_listing_ids, parse_attrs, clean_bedroom_studio_apt_data, clean_listing_ids_and_remove_nan_substr, print_scraped_sanity_checks # various data cleaning and HTML-parser functions via selenium methods:
 
 
 #define the Craigslist web scraper and web crawler, which we will use to scrape Craigslist SF Bay area rental listings data:
@@ -108,31 +108,23 @@ class Craigslist_Rentals(object):
         # parse scraped data's text if no exception is encountered:
         return list_to_append.append(scraped_html.text)  # parse text data from scraped html element, and append to list for given variable of interest
 
-
-    def parse_html_via_xpath_and_click(self, xpath_arg: str, list_to_append: list)-> list:
-
-        """ Scrape data from HTML element by looking up xpath (via selenium find_element('xpath') method), but then click to reveal the date-time data.
-        a.) Except if a ElementClickInterceptedException, NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--then wait until given HTML element has loaded on page using WebDriverWait() method.
-        b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's text data."""
-
-        # wait until given HTML element has loaded
+    def parse_html_via_xpath_get_datetime_attr(self, xpath_arg: str, list_to_append: list) -> list:
+        """ Scrape data from HTML element by looking up xpath (via selenium's find_element("xpath") method), within a try except control flow clause to account for rental listings that are missing a given HTML element.
+        a.) Except if a NoSuchElementException, TimeoutException, or if a WebDriverException occurs --indicating a given element does not exist or the WebDriver connection has been lost--add an 'nan' value indicating missing data.
+        b.) If no exceptions are encountered, scrape (return) the HTML element and extract the element's datetime attribute, which comprises a listing's date posted data."""
         try:
-            # a.) wait until given HTML element has loaded, or up to 50 seconds
+            # a.) wait until given HTML element has loaded
             wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) 
+            wait_until.until(EC.presence_of_element_located((By.XPATH, xpath_arg))) # a.) wait until given HTML element has loaded, or up to 50 seconds
             # b.) scrape the HTML element, extract text, and append to given list
-            date_posted_click = self.web_driver.find_element("xpath", xpath_arg)
-            ## provide delay to avoid being flagged by server as a bot, before we access each subsequent listing.
-            rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
-            time.sleep(rand_sl_time)
-            # click on element so that it will reveal the date-time value--ie, datetime val when the listing was posted
-            self.web_driver.execute_script("arguments[0].click();", date_posted_click)  # .executescript() is a JavaScript-based selenium method that tells the webdriver to initiate a click on the given HTML element.
+            scraped_html = self.web_driver.find_element("xpath", xpath_arg)
 
-        except (TimeoutException, NoSuchElementException, ElementClickInterceptedException, WebDriverException) as e:
+        except (TimeoutException, NoSuchElementException, WebDriverException) as e:
             """If the given rental listing page does not contain given element, append 'nan' value to indicate missing value."""
             return list_to_append.append('nan')  # indicate missing value
-        # parse text from scraped HTML element, and append to given list
-        return list_to_append.append(date_posted_click.text)  # parse text data from scraped html element, and append to list for given variable of interest
+        
+        # parse scraped data's datetime attribute if no exception is encountered:
+        return list_to_append.append(scraped_html.get_attribute('datetime'))  # parse datetime attribute data from scraped html element, and append to list for given variable of interest
 
 
     def obtain_listing_urls(self, xpaths_listing_urls,  xpaths_next_page_button)-> list:
@@ -182,7 +174,7 @@ class Craigslist_Rentals(object):
                     print("\nNavigating to the next page of rental listings\n")
 
                     # wait n seconds before accessing the next page, but randomize the amount of time delay, in order to mimic more human-like browser activity
-                    rand_sl_time = random.randrange(2, 8) # specify a range of pseudo-random values from 2 to 8 seconds
+                    rand_sl_time = random.randrange(1, 3) # specify a range of pseudo-random values from 1 to 3 seconds
                     time.sleep(rand_sl_time) # wait minimum of 1 second to let the page's various HTML contents to load, before we start extracting the various data on each subsequent page.
                     print(f"\nNew page's URL:\n{self.web_driver.current_url}\n\n")
 
@@ -268,7 +260,7 @@ class Craigslist_Rentals(object):
         date_posted = []   # date on which listing was originally posted
 
         ## specify amount of time delay in between GET requests--wait a minimum of 8 seconds, but randomize the amount of time delay, in order to mimic a more human-like browser activity
-        rand_sl_time = random.randrange(8, 15) # specify a range of pseudo-random values
+        rand_sl_time = random.randrange(2, 5) # specify a range of pseudo-random values
 
 
         ##  Iterate over each of the rental listing href URLs
@@ -281,7 +273,7 @@ class Craigslist_Rentals(object):
                 ## Attempt to click and scrape data re: date when the listing was posted (ie, date_posted)  
                 try:
                     # Click and then scrape the date posted data--NB: we need to click the element so we can scrape the specific date rather than a str specifying 'x days ago':
-                    self.parse_html_via_xpath_and_click('//time[@class="date timeago"]', date_posted)
+                    self.parse_html_via_xpath_get_datetime_attr('//time[@class="date timeago"]', date_posted)
 
 
                 ## Append 'nan' vals if the date_posted has not been clicked (allow user to exit webcrawler program and output available data to CSV) or if any of the data we are trying to scrape are missing on given rental listing page:
@@ -311,7 +303,7 @@ class Craigslist_Rentals(object):
             except (WebDriverException, TimeoutException, KeyboardInterrupt) as e:   # ie: if webdriver connection cannot be established or has been lost, or if user interrupts script via Keyboard interrupt
                 print('\n\nNB: The WebDriver connection has been lost:\n')
 
-                print('The internet connection has been lostm, WebDriver browser has been closed, or a keyboard interrupt has occured \nresulting in a WebDriverException, TimeoutException, or KeyboardInterrupt.')
+                print('The WebDriver browser has been closed, the internet connection has been lost, or a keyboard interrupt has occurred\nresulting in a WebDriverException, TimeoutException, or KeyboardInterrupt.')
                 print('\nAll previously scraped listings for this session will be saved and outputted to CSV.')
                 break   #  break for loop, and proceed to data transformation, cleaning and data pipelines
 
@@ -407,6 +399,9 @@ class Craigslist_Rentals(object):
 
         # bathrooms data
         dict_scraped_lists['bathrooms'] = clean_scraped_bathroom_data(dict_scraped_lists)
+
+        # clean the date_posted data to remove and replace the "T" char
+        dict_scraped_lists['date_posted'] = clean_scraped_date_posted_data(dict_scraped_lists)
 
         return dict_scraped_lists
 
