@@ -21,10 +21,9 @@ NB: Note that I'm using a Windows OS, so some of these software and CLIs may dif
 
 a) Python 3 (ideally, version >= 3.9); 
 
-b) Anaconda: We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment. ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks so we can save our data visualizations, charts, and regression results;
+b) Anaconda *or* miniconda (*NB: all scripting has been done using Anaconda, so I cannot 100% verify whether miniconda would work): We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment). ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks (which is pre-installed with Anaconda) so we can save our data visualizations, charts, and regression results;
 
 c) Various packages for Python 3 (as detailed in the sections below), which we can install directly from the requirements.txt once we have activated a conda (Python) environment;  
-
 
 d) A command-line interface (CLI) such as Windows PowerShell or Anaconda PowerShell Prompt. 
 
@@ -204,7 +203,7 @@ You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Pytho
 One way to use this webcrawler and data cleaning program is for individuals who are looking for a new place to rent within a given region. For example, after running the webcrawler and data pipeline portions of the project, you can then check for the least expensive rental prices within a given city or region, or to look for rental listings that match a specific set of characteristics or amenities that you desire. With some basic knowledge of SQL, you can run queries that match the amenities you would want.
 
 Quick SQL query examples: Show the rental prices & sqft for January 2023 rental listings from San Francisco that are 1-bedroom apartments with 1 full (not half) bathroom:
->>>
+<<<
 SELECT price
 FROM rental
 WHERE city = 'San Francisco'
@@ -215,7 +214,14 @@ AND MONTH(date_posted) = 1
 AND YEAR(date_posted) = 2023;
 
 What are the 10 cheapest such apartments from SF for January 2023?:
-SELECT...
+<<<
+WITH rank_rental_price_apt_sf AS (SELECT price, DENSE_RANK() OVER(ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
+AND city ='San Francisco' AND MONTH(date_posted) = 1 AND YEAR(date_posted)= 2023)
+
+SELECT price
+FROM rank_rental_price_apt_sf
+--select only 10 cheapest rental listings
+WHERE price_rank <= 10;
 
 
 ## Additional features to add to the webcrawler:
