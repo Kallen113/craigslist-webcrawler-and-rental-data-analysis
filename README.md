@@ -21,7 +21,7 @@ NB: Note that I'm using a Windows OS, so some of these software and CLIs may dif
 
 a) Python 3 (ideally, version >= 3.9); 
 
-b) Anaconda *or* miniconda (*NB: all scripting has been done using Anaconda, so I cannot 100% verify whether miniconda would work): We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment). ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks (which is pre-installed with Anaconda) so we can save our data visualizations, charts, and regression results;
+b) Anaconda *or* Miniconda (*NB: all scripting has been done using Anaconda, so I cannot 100% verify whether Miniconda would work): We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment). ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks (which is pre-installed with Anaconda) so we can save our data visualizations, charts, and regression results;
 
 c) Various packages for Python 3 (as detailed in the sections below), which we can install directly from the requirements.txt once we have activated a conda (Python) environment;  
 
@@ -29,29 +29,29 @@ d) A command-line interface (CLI) such as Windows PowerShell or Anaconda PowerSh
 
 ----di) Given that a conda virtual environment is recommended for this project, I would especially recommend using *Anaconda PowerShell Prompt* as your CLI. While a regular PowerShell prompt can be used, in order to use conda commands or virtual environments directly via a regular PowerShell CLI (ie, not an Anaconda PowerShell Prompt), you would need to place your installation of Anaconda into your local machine's System PATH.  
 
-e) SQL Server & SSMS:  can download the latest version of SQL Server here: [SQL Server download](https://www.microsoft.com/en-us/sql-server/sql-server-downloads). Also, to download SSMS, go to: [SSMS download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms?view=sql-server-ver16). For more details on installing and setting up SQL Server, see: [SQL Server installation & setup guide](https://www.sqlservertutorial.net/install-sql-server/).
+e) SQL Server & SSMS: You can download the latest version of SQL Server here: [SQL Server download](https://www.microsoft.com/en-us/sql-server/sql-server-downloads). Also, to download SSMS, go to: [SSMS download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms?view=sql-server-ver16). For more details on installing and setting up SQL Server, see: [SQL Server installation & setup guide](https://www.sqlservertutorial.net/install-sql-server/).
 
 SQL Server is required to implement the CSV (via Pandas) to SQL data pipeline (see Pandas_and_SQL_ETL_and_data_cleaning.py from the data_pipelines subfolder). SSMS is optional, but provides a GUI to more easily implement SQL Server queries, create tables, etc. A different SQL RDBMS--e.g., Oracle SQL--can be used instead of SQL Server, but the SQL RDBMS must be compatible with the pyodbc package's API. Otherwise, the Pandas_and_SQL_ETL_and_data_cleaning.py would need to be revised for your purposes. 
 
 f) (Optional): While optional, I would also recommend using a code editor such as VS Code, since we can use Jupyter notebooks and see our visualizations and regression results directly within the code editor as opposed to only using a CLI (which does not allow for plots to be displayed unless we use outside tools or GUIs).
 
-When actually running the webcrawler, I would highly recommend using a conda virtual environment for Python. This type of virtual environment can only be created if we have installed Anaconda. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
+When actually running the webcrawler, I would highly recommend using a conda virtual environment for Python. This type of virtual environment can only be created if we have installed Anaconda or mini-conda. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
 
 ### How do we install Python packages?
 
 We do *not* need to manually install Python packages. Instead, we can programmatically install Python packages using the files from this repo by running pip install from the requirements.txt, once we've activated a virtual environment.
 
-While we can use a regular Python virtual environment for the project, I would *instead* recommend using a conda virtual environment for Python. If we used regular Python virtual environments instead, we would need to install C++ dependencies separately, but using a conda environment will satisfy those requirements. (The only trade-offs to using a aconda virtual environment are that a) we need to install Anaconda & b) it takes longer to initially create a conda vs a regular Python virtual environment). 
+While we can use a regular Python virtual environment for the project, I would *instead* recommend using a conda virtual environment for Python. If we used regular Python virtual environments instead, we would need to install C++ dependencies separately, but using a conda environment will satisfy those requirements. (The only trade-offs to using a conda virtual environment are that a) we need to install Anaconda or Miniconda & b) it takes longer to initially create a conda vs a regular Python virtual environment since more packages are installed by default). 
 
 To install *all* required packages, we need to install the packages via a CLI by referencing the requirements.txt file that has been added to the parent CraigslistWebScraper directory of this repo.
 
 Namely, we need to take the following 3 steps:
 
-1.) Open a CLI: again, I'd recommend an Anaconda PowerShell Prompt.
+1.) Open a CLI: again, I'd recommend using an Anaconda PowerShell Prompt.
 
-2.) Change the directory to the parent CraigslistWebScraper directory.
+2.) Change the directory to the root (parent) directory of the craigslist-webcrawler scripts (ie, where the main.py executable is).
 
-3.) Create a conda virtual environment, and ensure the Python version if >= 3.7 (NB: you only need to do this step once)
+3.) Create a conda virtual environment, and ensure the Python version is >= 3.7 (NB: you only need to do this step once)
 
 (A regular Python virtual environment can be created instead, but again this is not recommended since you'd need to handle C++ dependencies separately)
 
@@ -190,7 +190,7 @@ You can find these data within the scraped_data subdirectory. This folder will a
 
 As stated in earlier sections, you need to have SQL Server installed, and a SQL database server needs to be setup before running any of the data_pipelines scripts. See the link above on how to install SQL Server and do the initial server setup. 
 
-Once a database server has been created and you have created a username and password for yourself, change the *config.json* from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection. Via this pyodbc connection, Python can connect to the given SQL database and make changes and/or run queries from a SQL table located within your local machine's database. To be clear, the config.json on this repo is shown for illustrative purposes only and does not reflect any real-life username or password.
+Once a database server has been created and you have created a username and password for yourself, change the *config.json* from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection. Via this pyodbc connection, Python can connect to the given SQL database and make changes and/or execute queries from a SQL table located within your local machine's database. To be clear, the config.json on this repo is shown for illustrative purposes only and does not reflect any real-life username or password.
 
 The included scripts in the data_pipelines subdirectory can then be used first to a) create a new SQL database and b) create the SQL table that will store the scraped data from the webcrawler.
 
