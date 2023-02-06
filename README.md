@@ -203,6 +203,7 @@ You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Pytho
 One way to use this webcrawler and data cleaning program is for individuals who are looking for a new place to rent within a given region. For example, after running the webcrawler and data pipeline portions of the project, you can then check for the least expensive rental prices within a given city or region, or to look for rental listings that match a specific set of characteristics or amenities that you desire. With some basic knowledge of SQL, you can run queries that match the amenities you would want.
 
 Quick SQL query examples: Show the rental prices & sqft for January 2023 rental listings from San Francisco that are 1-bedroom apartments with 1 full (not half) bathroom:
+
 <<<
 SELECT price
 FROM rental
@@ -214,13 +215,15 @@ AND MONTH(date_posted) = 1
 AND YEAR(date_posted) = 2023;
 
 What are the 10 cheapest such apartments from SF for January 2023?:
+
 <<<
-WITH rank_rental_price_apt_sf AS (SELECT price, DENSE_RANK() OVER(ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
+WITH rank_rental_price_apt_sf AS (SELECT price, DENSE_RANK() OVER(PARTITION BY city ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
 AND city ='San Francisco' AND MONTH(date_posted) = 1 AND YEAR(date_posted)= 2023)
 
 SELECT price
 FROM rank_rental_price_apt_sf
 --select only 10 cheapest rental listings
+
 WHERE price_rank <= 10;
 
 
