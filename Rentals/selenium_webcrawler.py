@@ -40,7 +40,7 @@ class Craigslist_Rentals(object):
     def __init__(self, region: str, subregion: str, housing_category: str, min_price: int, max_price: int, rent_period: int, sale_date: str):
         """ Define the customized URL to search for rental listings within the SF Bay Area.
         This URL will be used to implement the selenium web scraper.
-        Finally, initialize a selenium webdriver for the web crawler (Chrome in our case) and set the maxnumber of seconds we will allow as a delay in between when the GET request is sent via the web driver and the time in which the crawled webpage takes to load before starting a download for each given webpage."""
+        Finally, initialize a selenium webdriver for the web crawler (Chrome in our case) and set the max number of seconds we will allow as a delay in between when the GET request is sent via the web driver and the time in which the crawled webpage takes to load before starting a download for each given webpage."""
         # define various parameters for a customized craigslist rental listing URL:
         self.region = region
         self.subregion = subregion
@@ -70,7 +70,8 @@ class Craigslist_Rentals(object):
             ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library
             options=options  # implement the various options specified above
             )
-        self.download_delay = 50   # set maximum download delay of 50 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
+
+        self.download_delay = 150   # set maximum download delay of 150 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
 
 
     def load_craigslist_form_URL(self):
@@ -133,7 +134,6 @@ class Craigslist_Rentals(object):
         a) xpaths_listing_urls: xpaths for inner listing page URLs (hrefs) 
         &
         b) xpaths_next_page_button: xpaths for the next page button widget (ie, we need to click these to nagivate to subsequent pages of listings) .
-
         Finally: Return the listing urls as a list."""
         
         #initialize empty lists that will contain the data we will scrape:
@@ -176,12 +176,12 @@ class Craigslist_Rentals(object):
                     # wait n seconds before accessing the next page, but randomize the amount of time delay, in order to mimic more human-like browser activity
                     rand_sl_time = random.randrange(1, 3) # specify a range of pseudo-random values from 1 to 3 seconds
                     time.sleep(rand_sl_time) # wait minimum of 1 second to let the page's various HTML contents to load, before we start extracting the various data on each subsequent page.
-                    print(f"\nNew page's URL:\n{self.web_driver.current_url}\n\n")
+                    print(f"\nURL of new page:\n{self.web_driver.current_url}\n\n")
 
                 ## account for newer next page button UI (ie, differing xpath) by checking for final page, in which next page button element no longer exists (and is greyed out)
                 except (NoSuchElementException, ElementClickInterceptedException) as e:
                     # indicate that the last page has been reached
-                    print("\nLast page reached\n")
+                    print("\n**Last page reached**\n")
                     
                     ## scrape URLs for each rental listing on final page (accoutn for both xpath variants using pipe "or" operator)
 
@@ -225,7 +225,6 @@ class Craigslist_Rentals(object):
            
                 # specify url xpath; account for both xpath variants using pipe "or" operator
                 urls = self.web_driver.find_elements("xpath", xpaths_listing_urls)
-                # find_elements_by_xpath('//a[@class="post-title"] | //a[@class="result-title hdrlnk"]')
                 
                 
                 for url in urls:   # iterate over each listing URL on page, and extract href URL
@@ -259,7 +258,7 @@ class Craigslist_Rentals(object):
         attr_vars =[]    # str comprising various rental attributes--electric vehicle charger, etc.
         date_posted = []   # date on which listing was originally posted
 
-        ## specify amount of time delay in between GET requests--wait a minimum of 8 seconds, but randomize the amount of time delay, in order to mimic a more human-like browser activity
+        ## specify amount of time delay in between GET requests--wait a minimum of 2 seconds, but randomize the amount of time delay, in order to mimic a more human-like browser activity
         rand_sl_time = random.randrange(2, 5) # specify a range of pseudo-random values
 
 
