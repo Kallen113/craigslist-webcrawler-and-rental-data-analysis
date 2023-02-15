@@ -227,9 +227,19 @@ FROM rank_rental_price_apt_sf
 WHERE price_rank <= 10;
 
 
-## Additional features to add to the webcrawler:
+## To-Dos & Additional features to add to the webcrawler:
 
-To further mitigate bot detection, I might want add cursor movements and scroll-downs to help mimic human-like browser activity. I could add this to the finally code block--ie, within the try...except...else...finally nested within the listing url for loop. 
+1) NB: Importantly, I need to add working unit tests to the webcrawler. These unit tests should be run whenever the main webcrawler module is being run, and more specially, the tests will be run after the CSV data pipeline has completed. 
+
+a) The unit tests should check for whether any columns that should *always* have data--unless a rental listing has been deleted while the webcrawler is being run--do in fact have any nulls. For example: 
+
+b) If any of the unit tests fail, then this could indicate that craigslist has updated the underlying HRML of its rental listings pages. If city names, listing ids, or other columns that should *always* have data (aside from if a rental listing is deleted over the course of the webcrawler's execution) have any missing data, then this could be due to craigslist doing an update to the rental listing pages' HTML. As a result, the xpath arguments for the selenium xpath-parsing methods would fail, resulting in missing data & ultimately 'NaN' values, based on the try...except logic from the selenium_webcrawler.py script. 
+
+For example, craigslist--in Jan or early February 2023--updated the HTML for its city names data. As a result, older versions of this webcrawler (until Feb 14, 2023) would not have correctly parsed city names data. However, a failed unit test could print a message alerting this to me, avoiding the extra work of having to parse the city names from the rental listing URLs, which requires a fair bit of tricky string-parsing and data cleaning. 
+
+c) As a result, some of these unit tests should print a special message if the test(s) fail, indicating that the user needs to check whether craigslist has made any updates to the HTML on the rental listings pages.
+
+2) To further mitigate bot detection, I might want add cursor movements and scroll-downs to help mimic human-like browser activity. I could add this to the finally code block--ie, within the try...except...else...finally nested within the listing url for loop. 
 
 
 ### Legal Info & Disclaimer:
