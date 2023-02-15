@@ -71,7 +71,7 @@ class Craigslist_Rentals(object):
             options=options  # implement the various options specified above
             )
 
-        self.download_delay = 150   # set maximum download delay of 150 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
+        self.download_delay = 50   # set maximum download delay of 50 seconds, so the web scraper can wait for the webpage to load and respond to our program's GET request(s) before scraping and downloading data
 
 
     def load_craigslist_form_URL(self):
@@ -81,7 +81,7 @@ class Craigslist_Rentals(object):
         self.web_driver.get(self.url) # implement a GET request by loading up the customized Craigslist SF Bay Area rental listing pages via a Chrome webdriver
 
         # wait until the webpage's "searchform" form tag has been loaded, or up to a maximum 20 seconds (ie, given the value of self.download_delay)
-        try: # wait until the form tag with ID of "searchform"--ie, the Craigslist page given our search results--has been loaded, or up to a maximum of 5 seconds (given download_delay)
+        try: # wait until the form tag with ID of "searchform"--ie, the Craigslist page given our search results--has been loaded, or up to a maximum of 50 seconds (given download_delay)
             WebDriverWait(self.web_driver, self.download_delay).until(
                 EC.presence_of_element_located((By.ID, "searchform"))
             )  # NB: you need to use a tuple as the argument of the selenium EC.presence_of_element_located() function, hence the double-parantheses
