@@ -317,7 +317,7 @@ class Craigslist_Rentals(object):
 
 
                 ## Scrape city names
-                self.parse_html_via_xpath("//html/body/section/section/h1/span/small", cities)
+                self.parse_html_via_xpath("/html/body/section/section/h1/span/span[4]", cities)
                 
                 ##  Scrape number of bedrooms data-
                 self.parse_html_via_xpath('//span[@class="shared-line-bubble"]', bedrooms)
