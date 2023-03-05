@@ -142,22 +142,14 @@ class Craigslist_Rentals(object):
         # crawl over each page of listings, by looking for 'next' page buttons and clicking these after scraping the URLs of the inner listings. An exception will occur once the final page is reached since no additional 'next' page buttons will be present (and then, the webcrawler will iterate over and access each individual rental listing page)
 
         while True:
-
-            # # wait until first inner listing's href has been loaded on given page; account for *both* xpath variants that exist on the various craigslist region domains (by using pipe "or" operator)            
-            # wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to 50 seconds to let HTML element load on given rental listing webpage
-            # wait_until.until(EC.presence_of_element_located((By.XPATH, xpaths_listing_urls))) # wait until given HTML element has loaded, or up to 50 seconds
-
-            # scrape the HTML element, extract text, and append to list 
-
-            # specify xpath to inner listings' data (which includes href URLs); use pipe "or" operator to account for both xpath variants  
+            # scrape URLs for each rental listing, on each page of listings   
             urls = self.web_driver.find_elements("xpath", xpaths_listing_urls)
             
-           
             # iterate over each rental listing's URL, extract hrefs, and append to list  
-            for url in urls:   
+            for url in urls:
                 listing_urls.append(url.get_attribute('href'))  # extract the href (URL) data for each rental listing on given listings page
-
-            ## Navigate to each next page, collecting each rental listings' urls from each given page:
+                
+            ## Navigate to each next page of listings, collecting all rental listings' urls from each given page:
 
             ## Check that there are no duplicate urls in listing_urls (ie, url hrefs for the inner rental listings pages):
             if len(listing_urls) == len(set(listing_urls)):  # check that there are no duplicate urls in urls list (ie, url hrefs for the rental listings pages)
@@ -167,8 +159,12 @@ class Craigslist_Rentals(object):
                     ## Navigate to each next page, by clicking the 'next page' button (NB: different craigslist regions have one of *two* different xpaths to this button):
 
                     ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
+                    # wait until the next page button has loaded on given page, and is clickable:
+                    wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to x seconds to let HTML element load on given rental listing webpage
+                    wait_until.until(EC.element_to_be_clickable((By.XPATH, xpaths_next_page_button)))
+
                     next_page = self.web_driver.find_element("xpath", xpaths_next_page_button)     # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
-                    
+
                     # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
                     self.web_driver.execute_script("arguments[0].click();", next_page) 
                     print("\nNavigating to the next page of rental listings\n")
