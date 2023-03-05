@@ -153,7 +153,6 @@ def main():
         'San Diego, CA':'https://sandiego.craigslist.org/',
         'Chicago, IL':'https://chicago.craigslist.org/',
         'Seattle, WA':'https://seattle.craigslist.org/',
-        'Tacoma, WA':'https://seattle.craigslist.org/tac/',
         'Los Angeles, CA':'https://losangeles.craigslist.org/',
         'Phoenix, AZ':'https://phoenix.craigslist.org/',
         'Portland, OR':'https://portland.craigslist.org/',
