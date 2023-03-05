@@ -143,7 +143,7 @@ c.) data_pipelines: This contains several scripts associated with the Phase 2 of
 
 This data pipeline uses the pyodbc library's API to access SQL Server via Python. From the CLI, you can select the region & subregion whose scraped data you want to use to insert into the SQL Server table. To do so, the script reads in all available CSV files of scraped data for the given subregion. To ensure we *only* end up inserting new data, we run a simple SQL query to check for the data--for the given subregion--that has *already* been inserted into the SQL Server table by looking up the latest (ie, MAX() of the) date_posted records and use this value to filter the data we imported from our local PC's scraped data (ie, imported from the CSV files). 
 After performing several data cleaning and wrangling functions, we insert the new scraped data into our SQL Server table. 
-
+ 
 d.) SQL_config: This folder contains config.json, which specifies the SQL Server username and other configuration credentials that we need to refer to in order to connect Python to a SQL Server database using the pyodbc library. The reason for using a json file to store all of the SQL Server configuration details is so we do not need to manually enter the SQL Server credentials each time we need to access the SQL Server table. 
 
 e.) data_analysis: This comprises the Phase 3 scripts. Namely, this subdirectory contains the data analysis and visualization scripts and Jupyter notebooks. 
@@ -205,6 +205,7 @@ One way to use this webcrawler and data cleaning program is for individuals who 
 Quick SQL query examples: Show the rental prices & sqft for January 2023 rental listings from San Francisco that are 1-bedroom apartments with 1 full (not half) bathroom:
 
 <<<
+
 SELECT price
 FROM rental
 WHERE city = 'San Francisco'
@@ -217,13 +218,17 @@ AND YEAR(date_posted) = 2023;
 What are the 10 cheapest such apartments from SF for January 2023?:
 
 <<<
-WITH rank_rental_price_apt_sf AS (SELECT price, DENSE_RANK() OVER(PARTITION BY city ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
-AND city ='San Francisco' AND MONTH(date_posted) = 1 AND YEAR(date_posted)= 2023)
+
+WITH rank_rental_price_apt_sf AS 
+(
+    SELECT price, DENSE_RANK() OVER(PARTITION BY city ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
+    AND city ='San Francisco' AND MONTH(date_posted) = 1 AND YEAR(date_posted)= 2023
+)
 
 SELECT price
 FROM rank_rental_price_apt_sf
---select only 10 cheapest rental listings
 
+--select only 10 cheapest rental listings
 WHERE price_rank <= 10;
 
 
