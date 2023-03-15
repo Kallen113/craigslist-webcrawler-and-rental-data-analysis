@@ -115,7 +115,29 @@ Why use a Python module? The reason we are using main.py as a module is that we 
 
 ## A Brief Note About the Regions and subregions that this Webcrawler Project Focuses on: 
 
-The focus of this project is on SF Bay Area rental listings (ie, for the sfbay craigslist site) data, but the webcrawler and webscraping functions and scripts can be fairly easily adapted to crawl over data from other regions and metropolitan areas, such as NYC, Seattle, etc. 
+The focus of this project is on SF Bay Area rental listings (ie, for the sfbay craigslist site) data. 
+
+However, the webcrawler and webscraping functions and scripts can be fairly easily adapted to crawl over data from other regions and metropolitan areas, such as NYC, Seattle, etc. Given the "Update determine_subregions_for_given_clist_region.py" script from the determine_subregions_for_given_clist_region subdirectory, the webcrawler program already handles each of the following metroplitan cities and regions for the U.S. & Canada, in addition to (of course) the SF Bay Area:
+
+'San Diego, CA',
+'Chicago, IL',
+'Seattle, WA',
+'Los Angeles, CA',
+'Phoenix, AZ',
+'Portland, OR':,
+'Dallas/Fort Worth, TX',
+'Minneapolis/St. Paul, MN',
+'Boston, MA',
+'Washington, D.C.',
+'Atlanta, GA',
+'Miami, FL',
+'Hawaii (subregions are listed by each major island)',
+'Detroit, MI',
+'New York City, NY',
+'Vancouver, Canada',
+&
+'Toronto, Canada'.
+
 
 ## What if I Want to Examine Rental Listings from Metropolitan Areas Outside of the SF Bay Area?
 
