@@ -204,17 +204,29 @@ After activating the conda virtual environment, you can check which Python packa
 
 <<< conda list
 
-2) Where can I find the data that the webcrawler has outputted to CSV?
+2) Where can I find the data that the webcrawler has scraped and outputted to CSV?
 
 You can find these data within the scraped_data subdirectory. This folder will automatically be created after running the webcrawler program for the first time (ie, executing main.py via <<< python -m main at command line). This subdirectory will be located directly within the root directory. Any regions and then subregions will have their own additional subdirectories located within the scraped_data folder. 
 
 3) How do I setup a SQL Server table for the CSV to SQL data pipeline?
 
-As stated in earlier sections, you need to have SQL Server installed, and a SQL database server needs to be setup before running any of the data_pipelines scripts. See the link above on how to install SQL Server and do the initial server setup. 
+As stated in earlier sections, you need to have SQL Server installed.  See the link above on how to install SQL Server and do the initial server setup. 
+
+Once SQL Server is installed and set up properly on your local machine, this repo's scripts will handle *all* additional steps, such as creating a SQL Server database, creating a SQL table in the database, and performing a CSV to SQL Server data pipeline. All such relevant scripts can be found in the **following** subdirectory: data_pipelines. 
 
 Once a database server has been created and you have created a username and password for yourself, change the *config.json* from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection. Via this pyodbc connection, Python can connect to the given SQL database and make changes and/or execute queries from a SQL table located within your local machine's database. To be clear, the config.json on this repo is shown for illustrative purposes only and does not reflect any real-life username or password.
 
-The included scripts in the data_pipelines subdirectory can then be used first to a) create a new SQL database and b) create the SQL table that will store the scraped data from the webcrawler.
+To conclude: the included scripts in the data_pipelines subdirectory can be used to store all of the scraped data (ie, derived from running this webcrawler program) into a SQl Server table.
+
+These scripts include the following (listed below along with descriptions), and note that a) & b) are intended as one-off scripts since the SQL Server database and table need to only be created once, respectively:
+
+a) SQL_create_database_clist.py: create a new SQL database;  
+
+b) SQL_create_table_rental.py: create the SQL table that will store the scraped data from the webcrawle; 
+
+&
+
+c) Pandas_and_SQL_ETL_and_data_cleaning.py: implement an ETL CSV to SQL Server data pipeline in which we grab all of the relevant CSV files containing scraped data obtained from the webcrawler, perform some data cleaning and transformations, and then insert the cleaned data into your SQL Server table. The data pipeline script--ie, 
 
 4) What if I'm using Mac and/or I want to use a different SQL RDBMS other than SQL Server for the ETL data pipelines?
 
