@@ -473,7 +473,7 @@ class Craigslist_Rentals(object):
         # specify CSV file suffix
         csv_suffix = '.csv'
         # add region and subregion names to CSV file, and add .csv extension:
-        csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{underscore_separator}{csv_suffix}" # append today's date and .csv extension to the file name
+        csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{csv_suffix}" # append today's date and .csv extension to the file name
         # export dataframe to CSV. NB: concatenate CSV file name to the path by using os.path.join(). Also, do not export index since it does not contain pertinent data:
         return df.to_csv(os.path.join(scraped_data_path, csv_file_name), index=False)
 
