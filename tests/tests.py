@@ -2,6 +2,8 @@ import unittest
 import pandas as pd
 import numpy as np
 
+import pytest
+
 #NB!: Also see following for some good examples and documentation on developing unit tests on Pandas Dataframes
 # and numpy: <https://stackoverflow.com/questions/41852686/how-do-you-unit-test-python-dataframes> 
 
@@ -27,16 +29,26 @@ class Tests(unittest.TestCase):
     ## perform tests on the cleaned rental listings data, before loading into SQL Server table
 
     def test_for_duplicates(self, df):
-        """ Check that there are no duplicate listing URLs"""
+        """ Check that there are no duplicate listing ids"""
         # test for duplicate listing ids
         self.assertFalse(df['ids'].duplicated().any())  # ensure there are no duplicate ids
         pass
+
+    def test_for_perc_missing_city_names_data(self, df):
+        """Ensure that the scraped data have an acceptably low threshold of 
+        missing city names data. We will assume that any more than 10%
+        of the data having missing city names is suspiciously high."""
+        self.assertFalse(
+            len(df)/df['cities'].isnull().mean() # calculate percent of the data that have null city names 
+            > 0.1) # evaluate assertion to threshold of greater than 10% null  
+
 
     def test_date_format(self, df):
         """Ensure the date format of each datetime col 
         is of the form: YYYY-MM-DD"""
         self.assertTrue(df['date_posted'].duplicated().any())  # ensure there are no duplicate URLs
         pass
+
 
     
     def test_scraped_data_exists_for_given_region_for_ETL_to_SQL_pipeline(self, df):
