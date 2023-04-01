@@ -39,7 +39,7 @@ class Tests(unittest.TestCase):
         missing city names data. We will assume that any more than 10%
         of the data having missing city names is suspiciously high."""
         self.assertFalse(
-            len(df)/df['cities'].isnull().mean() # calculate percent of the data that have null city names 
+            df['cities'].isnull().mean() # calculate percent of the data that have null city names 
             > 0.1) # evaluate assertion to threshold of greater than 10% null  
 
 
