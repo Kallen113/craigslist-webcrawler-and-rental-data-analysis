@@ -268,7 +268,7 @@ WHERE price_rank <= 10;
 
 ## To-Dos & Additional features to add to the webcrawler:
 
-1) NB: Importantly, I need to add working unit tests to the webcrawler. These unit tests should be run whenever the main webcrawler module is being run, and more specially, the tests will be run after the CSV data pipeline has completed. 
+1) NB: Importantly, I need to add working unit tests to the webcrawler. These unit tests should be run whenever the main webcrawler module is being run, and more specifically, the tests will be run after the CSV data pipeline has completed. 
 
 a) The unit tests should check for whether any columns that should *always* have data--unless a rental listing has been deleted while the webcrawler is being run--do in fact have any nulls. For example: 
 
