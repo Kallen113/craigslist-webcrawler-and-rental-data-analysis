@@ -396,8 +396,18 @@ def main():
     print(f'\nRegion code: {region_code}\n')
 
     # # 1) Import all scraped rental listings data from given region:
-    scraped_data_parent_path = r"D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\scraped_data"
+    # specify path to scraped data
+    # get root directory of project by getting parent directory (ie, using os's .pardir method) 
+    parent_directory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+    
+    # specify folder of webcrawler's scraped data
+    scraped_data_folder = 'scraped_data'
 
+    # get full path to scraped_data, by referring to root directory (ie, parent_directory) & scraped_data_folder
+    scraped_data_parent_path = os.path.join(parent_directory, scraped_data_folder)
+
+    print(f'The directory of the webcrawler scraped data is:\n{scraped_data_parent_path}\n\n')
+    
     try:   
         # attempt to import and concat scraped data for given region:
         df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_parent_path, region_code)
