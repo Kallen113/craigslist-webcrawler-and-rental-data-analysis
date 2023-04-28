@@ -157,7 +157,10 @@ a.) Rentals: this contains most of the selenium webcrawler script, including the
 
 b.) scraped_data: this contains 1 or more folders that will contain all of the data the Python selenium webcrawler and scraper will scrape and parse from the rental listings data. 
 
-c.) data_pipelines: This contains several scripts associated with the Phase 2 of this project. NB: *Before* you can start running the CSV to SQL Server data pipeline, we need to create a SQL database (see SQL Server installation guide above) within SSMS or SQL Server command-line. After a SQL database and administator user has been created on your local PC, you can start running the scripts in this subdirectory:
+c.) data_pipelines: This contains several scripts associated with the Phase 2 of this project. NB: *Before* you can start running the CSV to SQL Server data pipeline, we need to create a SQL database (see SQL Server installation guide above) within SSMS or SQL Server command-line. 
+
+After a SQL database and administator user has been created on your local PC, you can start running the scripts in this subdirectory.
+NB: **note** that to run any of the data_pipelines scripts, you should first *change* your working directory *to* the *data_pipelines* subdirectory, and then you can run the scripts!
 
 ---c1) SQL_create_table_rental.py: This script is located within an additional subdirectory--ie, data_pipelines/create_SQL_table_and_initial_data_inserts/. SQL_create_table_rental.py script is a one-off script (ie, it's intended for a one-time use) that creates a SQL Server table that can be used to store all of the scraped data. This script must be run in order to enable the main CSV to SQL data pipeline script to function properly without requiring additional manual usage of SSMS or SQL Server. 
 
@@ -181,9 +184,11 @@ For data cleaning, I rely primarily on the Pandas and numpy libraries, exploitin
 
 1) Why is it that when I run the webcrawler program--ie, via <<< python -m main--the program is not running properly on my local machine? For example, I get a ModuleNotFoundError such as: "No module named 'selenium'" or "No module named 'pandas', etc.?
 
-I highly recommend that you use a conda virtual environment via an Anaconda PowerShell Prompt CLI, not a standard Python virtual environment or regular Windows PowerShell since you'd otherwise need to install C++ dependencies separately and manually.
+I recommend that you use a conda virtual environment via an Anaconda PowerShell Prompt CLI, not a standard Python virtual environment or regular Windows PowerShell since you'd otherwise need to install C++ dependencies separately and manually. The only downside to the conda approach is you need to install conda or Anaconda, if it is not installed already.
 
-However, if you are already using a conda virtual environment and are using an Anaconda PowerShell Prompt for your CLI, then double-check whether you have installed all required Python packages on the conda environment. As mentioned earlier, you do not have to manually install each Python package individually, but instead install from the requirements.txt file that is saved to the root directory of this project. As is standard practice, this .txt file contains a list of all required Python packages, including the versions of the packages I've used for this project. 
+If your local machine is low on SSD space, then a standard Python virtual environment is viable, but you need to install the latest C++ Redistributable. Download from here: <https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170>.
+
+However, if you are already using a conda virtual environment and are using an Anaconda PowerShell Prompt for your CLI, then double-check whether you have installed all required Python packages on the conda environment. As mentioned earlier, you do not have to manually install each Python package individually. Rather, you should install from the requirements.txt file that is saved to the root directory of this project. As is standard practice, this .txt file contains a list of all required Python packages, including the versions of the packages I've used for this project. 
 
 TLDR: To install all required Python packages to a conda virtual environment, do the following 3 steps:
 
@@ -210,11 +215,17 @@ You can find these data within the scraped_data subdirectory. This folder will a
 
 3) How do I setup a SQL Server table for the CSV to SQL data pipeline?
 
-As stated in earlier sections, you need to have SQL Server installed.  See the link above on how to install SQL Server and do the initial server setup. 
+As stated in earlier sections, you need to have SQL Server installed. See the link above on how to install SQL Server and do the initial server setup. 
 
 Once SQL Server is installed and set up properly on your local machine, this repo's scripts will handle *all* additional steps, such as creating a SQL Server database, creating a SQL table in the database, and performing a CSV to SQL Server data pipeline. All such relevant scripts can be found in the **following** subdirectory: data_pipelines. 
 
-Once a database server has been created and you have created a username and password for yourself, change the *config.json* from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection. Via this pyodbc connection, Python can connect to the given SQL database and make changes and/or execute queries from a SQL table located within your local machine's database. To be clear, the config.json on this repo is shown for illustrative purposes only and does not reflect any real-life username or password.
+These scripts are intended to be run *from* the data_pipelines subdirectory, *not* from the root directory. If you run any of the data_pipelines scripts from the root directory, the references to the directories will likely not work properly!
+
+That caveat being said, here is a tutorial on how to run the CSV to SQL Server data pipeline, including creating a new SQL database, SQL table, and importing data from the webcrawler's scraped data and implementing an ETL data pipeline to insert the cleaned data into the SQL table.
+
+NB!: Importantly, note that the config.json file will need to be changed to reflect your own username and password. More details on this are immediately below:
+
+Once a database server has been created and you have created a username and password for yourself, change the *config.json* from the SQL_config subdirectory to reflect your *own* username and password. This is because the Python scripts from the data_pipelines subdirectory reference the config.json via a pyodbc API connection! Via this pyodbc connection, Python can connect to the given SQL database and make changes and/or execute queries from a SQL table located within your local machine's database. To be clear, the config.json on this repo is shown for illustrative purposes only and does not reflect any real-life username or password.
 
 To conclude: the included scripts in the data_pipelines subdirectory can be used to store all of the scraped data (ie, derived from running this webcrawler program) into a SQl Server table.
 
@@ -224,11 +235,23 @@ a) SQL_create_database_clist.py: create a new SQL database;
 
 b) SQL_create_table_rental.py: create the SQL table that will store the scraped data from the webcrawle; 
 
+
+c) Pandas_and_SQL_ETL_and_data_cleaning.py: implement an ETL CSV to SQL Server data pipeline in which we grab all of the relevant CSV files containing scraped data obtained from the webcrawler, perform some data cleaning and transformations, and then insert the cleaned data into your SQL Server table. 
+
 &
 
-c) Pandas_and_SQL_ETL_and_data_cleaning.py: implement an ETL CSV to SQL Server data pipeline in which we grab all of the relevant CSV files containing scraped data obtained from the webcrawler, perform some data cleaning and transformations, and then insert the cleaned data into your SQL Server table. The data pipeline script--ie, 
+d) Delete_SQL_records_since_given_date.py: Use this script with caution! This script will delete records (data) that have been stored to the project's SQL table. For example, perhaps you wish to delete old data from the SQL table to free up space on your local machine's hard (or SSD) drive.
 
-4) What if I'm using Mac and/or I want to use a different SQL RDBMS other than SQL Server for the ETL data pipelines?
+
+4) When I run any data_pipeline scripts or other scripts that live in subdirectories from within the root directory, the scripts don't work properly, and I get a FileNotFoundError or similar. Why are these scripts not running properly, and how do I fix this?
+
+This is essentially by design. As mentioned above, the data_pipelines scripts are *intended* to be run *from* that subdirectory.
+
+In short: To run any scripts from data_pipelines, change your CTI's directory to the data_pipelines folder *instead* of running these scripts directly from the root directory!
+
+Once you've changed your working directory to the subdirectory, the files should run fine, and you can set up the SQL database, table, and start inserting the scraped data from the CSV files into the SQL Server table.  
+
+5) What if I'm using Mac and/or I want to use a different SQL RDBMS other than SQL Server for the ETL data pipelines?
 
 You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Python library that this project uses for the CSV to SQL data pipelines. Some of the scripts from the data_pipelines subdirectory might need to be modified, but most of the code should still run properly without any changes.
 
