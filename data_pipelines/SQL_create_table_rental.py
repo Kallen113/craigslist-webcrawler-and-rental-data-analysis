@@ -2,7 +2,8 @@
 import pyodbc
 # json library to open a json file that contains our SQL credentials (ie, username, password, etc.) and database name 
 import json  
-
+# os library to deal with directories
+import os
 """
 NB: This is intended to be a one-off script. 
 It will create a table called rentals,
@@ -95,8 +96,15 @@ class SQL_Database():
 
 
 def main():
-    # specify path to json file containing SQL configuration/username data
-    sql_config_path = "D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\SQL_config\\config.json" 
+    # get root directory of project by getting parent directory (ie, using os's .pardir method) 
+    parent_directory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+
+
+    # SQL config json file: specify folder (relative to root directory) & file name of json file containing SQL configuration & login data 
+    sql_config_folder_and_json = "SQL_config\\config.json" 
+
+    # get full path to SQL config, by referring to root directory (ie, parent_directory) & sql_config_folder_and_json
+    sql_config_path = os.path.join(parent_directory, sql_config_folder_and_json)
 
     # implement function to import SQL credentials via config.json file, and then create SQL table, which we will use to store all scraped craigslist rental listings data!
     SQL_Database(sql_config_path)  # create SQL table 'rentals'. NB: be sure to pass in path to the json SQL configuration file so we can load in the needed username, password, and configuration data to be able to access the SQL database  
