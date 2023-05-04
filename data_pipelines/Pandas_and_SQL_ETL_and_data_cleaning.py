@@ -107,7 +107,7 @@ class SQL_Database:
         
         except pyodbc.Error as err:  # account for possible pyodbc SQL Server connection error
             print("We were not able to connect to the SQL server database properly. Please double-check config.json and try again.") 
-
+        
         # initialize cursor so we can execute SQL code
         cursor = conn.cursor() 
 
@@ -217,9 +217,13 @@ class SQL_Database:
 
             print("\n\nWe have inserted the records from the DataFrame, and the SQL Server table has been updated successfully.")
         
-        except pyodbc.Error as e: #account for possible errors while inserting dataframe into SQL table
-            print("\nAn error occurred while inserting the DataFrame records into the SQL Server table.")
-            quit()
+         #account for possible errors while inserting dataframe into SQL table
+        except pyodbc.Error as ex:
+                print("\nAn error occurred while inserting the DataFrame records into the SQL Server table:\n")
+                # parse and print the specific pyodbc SQL error message:
+                sqlstate = ex.args[1]
+                print(sqlstate) 
+                quit()
 
 
         # # sanity check-- ensure some data has been inserted into new SQL table
