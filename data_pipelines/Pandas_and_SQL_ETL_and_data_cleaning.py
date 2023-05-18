@@ -270,44 +270,134 @@ def remove_nulls_list(df, list_of_cols):
     """Remove rows that do not have price, city name, kitchen, sqft, or listing ID data, as these are essential variables in this rental listings dataset."""
     return df.dropna(subset=list_of_cols)
 
-def clean_split_city_names(df, address_critera: list, neighborhood_criteria:list, split_city_delimiters: list, incorrect_city_names:dict, cities_not_in_region:dict, cities_that_need_extra_cleaning:dict):
-    """Clean city names data in several ways:
-    a.) Remove extraneous address & neighborhood data placed in the city names HTML object, such as 'Rd', 'Blvd', or 'Downtown'.
-    b.) Unsplit city names data that are split via delimiters such as ',' & '/' .
-    c.) Replace abbreviated or mispelled city names, and remove city names that do not exist within the SF Bay Area (e.g., 'Redding').
-    d.) Remove any digits/integers within the city names data--ie, by using a '\d+' regex as the argument of str.replace() and replace it with empty strings.
-    e.) Remove any city names records that are left with merely empty strings (ie, the other steps removed all data for that given cities record).
-    f.) Remove any whitespace to avoid the same city names from being treated as different entities by Pandas, Python, or SQL. 
-    g.) Use str.capwords() to capitalize words (ie, excluding apostrophes).
-    h.) Replace city names that are mispelled after having removed various street and neighborhood substrings such as 'St' or 'Ca'--e.g., '. Helena' should be 'St. Helena'. """
-    # specify extraneous street & address data (e.g., 'Rd') that we want to remove from the city names column:
-    addr_criteria = '|'.join(address_critera) # Join pipe ('|') symbols to address list so we can str.split() on any one of these criteria (ie, 'or' condition splitting on each element separated by pipes):
-    # specify extraneous neighborhood criteria we should also remove from col
-    nbhood_criteria = '|'.join(neighborhood_criteria) # remove neighborhood names as well as state abbreviation (shown on website as 'Ca') that is shown without the usual comma delimiter!
-    # b.) specify delimiters we need to refer to un-split city names:
-    split_city_delimiters = '|'.join(split_city_delimiters) # join pipes to delimiters so we can use str.split() based on multiple 'or' criteria simultaneously
-    # clean city names data by removing extraneous address & neighborhood data, and unsplitting city names based on ',' & '\' delimiters
-    df['cities'] =  df['cities'].str.split(addr_criteria).str[-1].str.replace(nbhood_criteria, '', case=True).str.lstrip()
-    df['cities'] = df['cities'].str.split(split_city_delimiters).str[0] #unsplit city names based on comma or forward-slash delimiters
-    # c.) replace specific abbreviated or mispelled city names, and remove cities that are not actually located in the sfbay region:
-    df = df.replace({'cities':incorrect_city_names}) # replace mispelled & abbreviated city names
-    df = df.replace({'cities':cities_not_in_region})  # remove (via empty string) cities that are not actually located in the sfbay region
-    # d.) Remove digits/integer-like data from cities column:
-    df['cities'] = df['cities'].str.replace('\d+', '')  # remove any digits by using '/d+' regex to look up digits, and then replace with empty string
-    # e.) Remove any rows that have empty strings or null values for cities col (having performed the various data filtering and cleaning above)
-    df = df[df['cities'].str.strip().astype(bool)] # remove rows with empty strings (ie, '') for cities col 
-    df = df.dropna(subset=['cities']) # remove any remaining 'cities' null records
-    # f.) Remove whitespace
-    df['cities'] = df['cities'].str.strip() 
-    # g.) capitalize the city names using str.capwords() 
-    df['cities'] = df['cities'].str.split().apply(lambda x: [val.capitalize() for val in x]).str.join(' ')
-    # h) Replace city names that are mispelled after having removed various street and neighborhood substrings such as 'St' or 'Ca'--e.g., '. Helena' should be 'St. Helena' & 'San los' should be 'San Carlos'. Also, remove any non-Bay Area cities such as Redding:
-    df = df.replace({'cities':cities_that_need_extra_cleaning})
-    # i) Remove any remaining empty strings or null records
-    df = df[df['cities'].str.strip().astype(bool)] # remove rows with empty strings (ie, '') for cities col 
-    df = df.dropna(subset=['cities']) # remove any remaining 'cities' null records
+
+# NB!: to more precisely clean city names, we will run a short webcrawler to grab wikipedia table data on all SF Bay city names:
+
+# a) Create a few simple webcrawlers to grab the city names data from 2 wikipedia tables
+
+# SF Bay cities data: access page, and grab city names, append to list
+
+def obtain_cities_from_wiki_sfbay(webpage_url,list_of_cities):
+    # initialize web driver
+            
+    driver = webdriver.Chrome(ChromeDriverManager().install())  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+    
+    # access webpage
+    driver.get(webpage_url)
+
+    xpaths_table = '//table[@class="wikitable plainrowheaders sortable jquery-tablesorter"]'
+
+    # search for wiki data tables:
+    table = driver.find_element(By.XPATH, xpaths_table)
+
+
+    # iterate over each table row and then row_val within each row to get data from the given table, pertaining to the city names
+    for row in table.find_elements(By.CSS_SELECTOR, 'tr'): # iterate over each row in the table
+        
+        
+        city_names =  row.find_elements(By.TAG_NAME, 'th')  # iterate over value of each row, *but* ONLY for the 1st column--ie, the 0th index
+        # city_names =  row.find_elements(By.TAG_NAME, 'td')[0]  # iterate over value of each row, *but* ONLY for the 1st column--ie, the 0th index
+
+        # extract text, but *skip* the first 2 rows of the table  rows' values since these are only the column names!
+        for city_name in city_names[:2]: # skip first 2 rows 
+
+            # append the remaining data to list
+            list_of_cities.append(city_name.text)
+
+
+    # exit webpage 
+    driver.close()
+
+
+    return list_of_cities
+
+# Santa Cruz data from wiki
+def obtain_cities_from_wiki_sc(webpage_url,list_of_cities):
+    # initialize web driver
+            
+    driver = webdriver.Chrome(ChromeDriverManager().install())  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+    
+    # access webpage
+    driver.get(webpage_url)
+
+
+    # NB!: there are 2 tables with the same class name; only select data from the 2nd one
+    xpaths_table = '//table[@class="wikitable sortable jquery-tablesorter"][2]//tr//td[2]'  # 2nd table on webpage with this class name
+
+
+    # search for given wiki data tables:
+    table = driver.find_elements(By.XPATH, xpaths_table)
+
+
+    for row in table:
+        print(f'City names:{row.text}')
+        list_of_cities.append(row.text)
+
+
+
+
+
+    # exit webpage 
+    driver.close()
+
+    # # sanity check
+    # print(f'List of city names:\n{list_of_cities}')
+
+    return list_of_cities
+
+
+# # combine both the sfbay city names & sc county names lists into one:
+def combine_lists(list1, list2):
+    return list1.extend(list2)
+
+def add_dash_delimiter_in_bw_each_word_of_city_names(city_names:list):
+    return [word.replace(' ', '-') for word in city_names]  # use str.replace() method to replace whitespaces with dashes
+
+
+# clean city names by matching scraped craigslist data to that of the wikipedia table data:
+def parse_city_names_from_listing_URL(df, unique_city_names_dash_delim:list):
+    """ 1) Use str.contains() method chained to a .join() method in which we perform an 'OR' boolean via
+    the pipe (ie, '|' operator--ie, so we can search for multiple substrings (ie, each element 
+    from the list arg) to look up any matching instances of city names
+    from the unique_city_names... list 
+    relative to the rental listing URLs (ie, listing_urls).
+
+    2) Then, parse each such first city name by taking the first matched city name only,
+
+    3) Use these parsed city name values to **replace** the values for the 'cities' column!"""
+    ## apply lower-case for the list of SF Bay + SC county names:
+    unique_city_names_dash_delim  = [el.lower() for el in unique_city_names_dash_delim]
+    
+    # step 1: use str.split() on '/apa/d' and get the 2nd element after performing the split:
+    df['listing_urls_for_str_match'] = df['listing_urls'].str.split('/apa/d/').str[1]  # obtain the 2nd resulting element
+    
+    ## 2a) First!!: convert all string elements in col to lower-case for sake of consistency, ie w/ respect to list of city names
+    df['listing_urls_for_str_match'] = df['listing_urls_for_str_match'].str.lower()  # apply lowercase to all characters of each row's string vals 
+    
+    #step 3: match a substring from this newly-parsed column-- ie, 'listing_urls_for_str_match'
+    # -- to matching substrings from the  sfbay_city_names list:
+    # How?: use str.contains() and join pipe operators to each element of the list to perform an essentially  boolean "OR" str.contains() search for any matching city names
+
+    # pipe operator
+    pipe_operator = '|'
+
+    # specify a regex pattern for a str.extract() method--NB: we need to wrap the pattern within a sort of tuple by using parentheses in strings--ie, '( )', so like the following format: '( regex_pattern...)'
+    unique_city_names_dash_delim_pattern = '(' + pipe_operator.join(unique_city_names_dash_delim)+')'  # wrap the city names regex pattern within a 'string' tuple: ie, '(...)'
+
+    # replace cities with matching city names wrt listing_urls_for_str_match col from regex pattern (ie, derived from list of names), using str.extract() 
+    df['cities'] = df['listing_urls_for_str_match'].str.extract(unique_city_names_dash_delim_pattern, expand=False)
+    # sanity check
+    print(df['cities'])
+
     return df
 
+
+def remove_dashes_from_words_in_col(df, col):
+    return df[col].str.replace('-', '', regex=True)
+
+
+def capitlize_each_word_in_row_for_col(df, col):
+    return df[col].str.title()
 
 
 def transform_cols_to_indicators(df, list_of_cols):
@@ -472,8 +562,64 @@ def main():
     # sanity check
     print(f"Remaining price, city name, sqft, kitchen, & listing id nulls: \n{df[list_cols_to_remove_nulls].isnull().sum()}")
 
-    ## clean split city names and clean abbreviated or incorrect city names:
-    # specify various address and street name that we need to remove from the city names
+    ##  Clean city names data:
+    # NB: run a wikipedia table webcrawler to get a list of all possible SF Bay city names:
+
+    # initialize lists:
+    sfbay_city_names = []
+
+    # sf bay area city names wiki page:
+    sfbay_cities_wiki_url = 'https://en.wikipedia.org/wiki/List_of_cities_and_towns_in_the_San_Francisco_Bay_Area'
+
+
+    #sfbay data
+    obtain_cities_from_wiki_sfbay(sfbay_cities_wiki_url, sfbay_city_names)
+    
+
+    # remove remaining col names:
+    sfbay_city_names = sfbay_city_names[4:]
+
+    # sanity check
+    print(f'sfbay city names:{sfbay_city_names}')
+
+    print(f'There are {len(sfbay_city_names)} city names\nNB: There should be 101.')
+
+    # Sc county city names data:
+    # sc county wiki page url
+    sc_county_cities_wiki_url = 'https://en.wikipedia.org/wiki/Santa_Cruz_County,_California#Population_ranking'
+    # initialize list
+    sc_county_city_names = []
+
+    # Santa Cruz data from wiki
+    obtain_cities_from_wiki_sc(sc_county_cities_wiki_url, sc_county_city_names)
+
+
+    #  # clean data by removing extraneous '†' char from city names list
+    sc_county_city_names = list(map(lambda x: x.replace('†',''), sc_county_city_names))
+
+    ## finally, remove any whitespace from list-- use list comprehension
+    sc_county_city_names = [s for s in sc_county_city_names if s.strip()]
+
+    # sanity check
+    print(f'\n\nsc county city names:{sc_county_city_names}')
+    print(f'There are {len(sc_county_city_names)} city names for SC county.')
+
+    combine_lists(sfbay_city_names, sc_county_city_names)
+
+    # sanity check
+    print(f'sanity check on sfbay & sc county city names data:\n\n{sfbay_city_names}')
+
+    print(f'\nThere are {len(sfbay_city_names)} cities')
+
+
+    sfbay_city_names = add_dash_delimiter_in_bw_each_word_of_city_names(sfbay_city_names)
+    
+    # sanity check
+    print(f"List of SF Bay city names parsed from wiki tables:{sfbay_city_names}")
+
+    # clean city names data
+    df = parse_city_names_from_listing_URL(df, sfbay_city_names)
+    
     address_criteria = ['Boulevard', 'Blvd', 'Road', 'Rd', 'Avenue', 'Ave', 'Street', 'St', 'Drive', 'Dr', 'Real', 'E Hillsdale Blvd', 'Ln', '-brookview', 'Lincoln Hill-'] 
 
     # specify various extraneous neighborhood names such as 'Downtown' 
