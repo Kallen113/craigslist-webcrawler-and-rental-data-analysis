@@ -19,11 +19,13 @@ To implement the Python selenium webcrawler program and the CSV to SQL data pipe
 
 NB: Note that I'm using a Windows OS, so some of these software and CLIs may differ if you have a Mac or other non-Windows OS.
 
-a) Python 3 (ideally, version >= 3.9); 
+a) Python 3 (ideally, version >= 3.8).
 
-b) Anaconda *or* Miniconda (*NB: all scripting has been done using Anaconda, so I cannot 100% verify whether Miniconda would work): We are using this for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment). ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks (which is pre-installed with Anaconda) so we can save our data visualizations, charts, and regression results;
+b) A Python virtual environment, but preferably Anaconda *or* Miniconda. *NB: (most of this repo's scripts have been tested using Anaconda, so I cannot 100% verify whether Miniconda would work). I recommend using Anaconda (or possibly Miniconda)  for 2 reasons: i) So we can use a conda virtual environment for Python, so that we can avoid having to install C++ dependencies manually (which would be required if using a regular Python virtual environment). ii) For the 3rd phase/data analysis phase, we will use Jupyter notebooks (which is pre-installed with Anaconda) so we can save our data visualizations, charts, and regression results.
 
-c) Various packages for Python 3 (as detailed in the sections below), which we can install directly from the requirements.txt once we have activated a conda (Python) environment;  
+In short, if your PC is low on hard-drive space, then opt for a standard Python virtual environment, but you will need to install the latest C++ Redistributable manually. Download this from here: <https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170>.
+
+c) Various packages for Python 3 (as detailed in the sections below), which we can install directly from the requirements.txt once we have activated a conda or other virtual Python environment.
 
 d) A command-line interface (CLI) such as Windows PowerShell or Anaconda PowerShell Prompt. 
 
@@ -33,27 +35,27 @@ e) SQL Server & SSMS: You can download the latest version of SQL Server here: [S
 
 SQL Server is required to implement the CSV (via Pandas) to SQL data pipeline (see Pandas_and_SQL_ETL_and_data_cleaning.py from the data_pipelines subfolder). SSMS is optional, but provides a GUI to more easily implement SQL Server queries, create tables, etc. A different SQL RDBMS--e.g., Oracle SQL--can be used instead of SQL Server, but the SQL RDBMS must be compatible with the pyodbc package's API. Otherwise, the Pandas_and_SQL_ETL_and_data_cleaning.py would need to be revised for your purposes. 
 
-f) (Optional): While optional, I would also recommend using a code editor such as VS Code, since we can use Jupyter notebooks and see our visualizations and regression results directly within the code editor as opposed to only using a CLI (which does not allow for plots to be displayed unless we use outside tools or GUIs).
+f) (Optional): While optional, I would also recommend using a code editor such as VS Code, since we can use Jupyter notebooks and see our visualizations and regression results directly within the code editor as opposed to only using a CLI (which does not allow for plots to be displayed unless we install and set up additional tools or GUIs).
 
-When actually running the webcrawler, I would highly recommend using a conda virtual environment for Python. This type of virtual environment can only be created if we have installed Anaconda or mini-conda. A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
+Why is using a virtual environment important? A virtual environment allows us to have an isolated environment that contains all of the packages that are specific to this project. This way, we can more easily deal with a specific set of package dependencies than if we were (more clumsily) installing the packages at the global level.  
 
 ### How do we install Python packages?
 
-We do *not* need to manually install Python packages. Instead, we can programmatically install Python packages using the files from this repo by running pip install from the requirements.txt, once we've activated a virtual environment.
+To be clear, do *not* need to manually install Python packages. Instead, we can programmatically install Python packages using the files from this repo by running pip install from the requirements.txt, once we've activated a virtual environment.
 
-While we can use a regular Python virtual environment for the project, I would *instead* recommend using a conda virtual environment for Python. If we used regular Python virtual environments instead, we would need to install C++ dependencies separately, but using a conda environment will satisfy those requirements. (The only trade-offs to using a conda virtual environment are that a) we need to install Anaconda or Miniconda & b) it takes longer to initially create a conda vs a regular Python virtual environment since more packages are installed by default). 
+While we can use a regular Python virtual environment for the project, I would again recommend using a conda virtual environment for Python, if your local machine has the required hard-drive space. If we used regular Python virtual environments instead, we would need to install C++ dependencies separately, but using a conda environment will satisfy those requirements. (The only main trade-offs to using a conda virtual environment relative to a standard Python virtual environemtn are that a) we need to install Anaconda or Miniconda first, & b) it takes longer to initially create a conda vs a regular Python virtual environment since more packages are installed by default). 
 
 To install *all* required packages, we need to install the packages via a CLI by referencing the requirements.txt file that has been added to the parent CraigslistWebScraper directory of this repo.
 
 Namely, we need to take the following 3 steps:
 
-1.) Open a CLI: again, I'd recommend using an Anaconda PowerShell Prompt.
+1.) Open a CLI: again, I'd recommend using an Anaconda PowerShell Prompt or a regular PowerShell, but the latter might require a bit more setup.
 
 2.) Change the directory to the root (parent) directory of the craigslist-webcrawler scripts (ie, where the main.py executable is).
 
-3.) Create a conda virtual environment, and ensure the Python version is >= 3.7 (NB: you only need to do this step once)
+3.) Create a conda virtual environment, and ensure the Python version is >= 3.8 (NB: you only need to do this step once)
 
-(A regular Python virtual environment can be created instead, but again this is not recommended since you'd need to handle C++ dependencies separately)
+(A regular Python virtual environment can be created instead, but again this is not necessarily recommended since you'd need to handle C++ dependencies separately, unless you are constrained for hard-drive space).
 
 Ex: Create a conda virtual env called "clistenv" with Python version 3.9:
 
@@ -76,7 +78,6 @@ Ex: in an Anaconda Powershell Prompt say the conda virtual environment is again 
 #### pip install -r requirements.txt
 
 
-
 6.) When you have finished using the webcrawler using a CLI such as PowerShell, use the deactivate command to turn off the virtual env:
 
 <<<
@@ -96,7 +97,7 @@ File processing, time, and datetime:
 os, time, random, datetime
 
 
-## How do We Actually Implement the Webcrawler?
+## How do we Actually Implement the Webcrawler?
 
 To implement the Python selenium webcrawler, we need to execute the main.py script as a module in a command-line terminal such as using Powershell. 
 
