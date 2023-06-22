@@ -158,16 +158,20 @@ class Craigslist_Rentals(object):
 
                     ## Navigate to each next page, by clicking the 'next page' button (NB: different craigslist regions have one of *two* different xpaths to this button):
 
-                    ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
                     # wait until the next page button has loaded on given page, and is clickable:
-                    wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to x seconds to let HTML element load on given rental listing webpage
-                    wait_until.until(EC.element_to_be_clickable((By.XPATH, xpaths_next_page_button)))
 
                     next_page = self.web_driver.find_element("xpath", xpaths_next_page_button)     # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
+                    
+                    next_page_element = wait.until(EC.element_to_be_clickable(
+                        (By.XPATH, xpaths_next_page_button)
+                    )
+                        )
 
-                    # click to proceed to the next page--the execute_script() is a selenium method that enables us to invoke a JavaScript method and tell the webdriver to click the 'next' page button
-                    self.web_driver.execute_script("arguments[0].click();", next_page) 
-                    print("\nNavigating to the next page of rental listings\n")
+                    # keep clicking the next page until the last page is reached, based on the next_page_element equaling 1 (ie, until it equals 0)
+                    if (next_page_element != 0):  # verify the next page element still exists on given page, so next page can still be navigated to...
+                        next_page_element.click() # click next page element
+                    
+
 
                     # wait n seconds before accessing the next page, but randomize the amount of time delay, in order to mimic more human-like browser activity
                     rand_sl_time = random.randrange(1, 3) # specify a range of pseudo-random values from 1 to 3 seconds
@@ -175,7 +179,7 @@ class Craigslist_Rentals(object):
                     print(f"\nURL of new page:\n{self.web_driver.current_url}\n\n")
 
                 ## account for newer next page button UI (ie, differing xpath) by checking for final page, in which next page button element no longer exists (and is greyed out)
-                except (NoSuchElementException, ElementClickInterceptedException) as e:
+                except (NoSuchElementException, ElementClickInterceptedException, TimeoutException) as e:
                     # indicate that the last page has been reached
                     print("\n**Last page reached**\n")
                     
