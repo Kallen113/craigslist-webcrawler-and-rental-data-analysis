@@ -111,8 +111,10 @@ def main():
     list_of_xpaths_listing_urls = [
         '//a[@class="titlestring"]', 
         '//a[@class="post-title"]', 
-        '//a[@class="result-title hdrlnk"]'
+        '//a[@class="result-title hdrlnk"]',
+        '//a[@class="cl-app-anchor text-only posting-title"]'
         ]
+    
     # argument #1 finalized: concatenate each element in list with pipe operators separating each:
     xpaths_listing_urls = pipe_operator.join([f'{el}' for el in list_of_xpaths_listing_urls]) 
     
