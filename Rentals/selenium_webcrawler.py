@@ -151,6 +151,10 @@ class Craigslist_Rentals(object):
                 
             ## Navigate to each next page of listings, collecting all rental listings' urls from each given page:
 
+            # specify amount of time to wait for element before timing out
+            wait = WebDriverWait(self.web_driver,self.download_delay)
+
+
             ## Check that there are no duplicate urls in listing_urls (ie, url hrefs for the inner rental listings pages):
             if len(listing_urls) == len(set(listing_urls)):  # check that there are no duplicate urls in urls list (ie, url hrefs for the rental listings pages)
                 
@@ -160,8 +164,14 @@ class Craigslist_Rentals(object):
 
                     ## Specify xpath for next page link button; use pipe "or" operator to account for both xpath variants  
                     # wait until the next page button has loaded on given page, and is clickable:
-                    wait_until = WebDriverWait(self.web_driver, self.download_delay)  # wait up to x seconds to let HTML element load on given rental listing webpage
-                    wait_until.until(EC.element_to_be_clickable((By.XPATH, xpaths_next_page_button)))
+                    next_page_element = wait.until(EC.element_to_be_clickable(
+                        (By.XPATH, xpaths_next_page_button)
+                    )
+                        )
+
+                    # keep clicking the next page until the last page is reached, based on the next_page_element equaling 1 (ie, until it equals 0)
+                    if (next_page_element != 0):  # verify the next page element still exists on given page, so next page can still be navigated to...
+                        next_page_element.click() # click next page element
 
                     next_page = self.web_driver.find_element("xpath", xpaths_next_page_button)     # the 1st xpath's class name will remain the same until last page of listings; the 2nd xpath stays same throughout each page...
 
