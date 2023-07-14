@@ -1,7 +1,10 @@
 # imports-- file processing & datetime libraries
 import os
 import glob
+from pathlib import Path
 import datetime
+from dateutil.parser import parse
+
 # data analysis libraries & SQL libraries
 import numpy as np
 import pandas as pd
@@ -12,6 +15,17 @@ import pyodbc
 import json 
 # inquirer library to prompt user for region:
 import inquirer
+
+#web crawling, web scraping & webdriver libraries and modules
+from selenium import webdriver  # NB: this is the main module we will use to implement the webcrawler and webscraping. A webdriver is an automated browser.
+from webdriver_manager.chrome import ChromeDriverManager # import webdriver_manager package to automatically take care of any needed updates to Chrome webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException, ElementClickInterceptedException
+from selenium.webdriver.chrome.options import Options  # Options enables us to tell Selenium to open WebDriver browsers using maximized mode, and we can also disable any extensions or infobars
+
+import requests
 
 ## Data pipeline of Pandas' df to SQL Server -- import scraped craigslist rental listings data from CSV files to single Pandas' df: 
 
@@ -45,26 +59,148 @@ def parse_region_code_from_craigslist_URL(region_URL):
     """From the region_URL--which is given by the user's selection of the region_name, use .split() method to parse the region code for the given URL, which we will supply as an arg to the Craigslist_Rentals class's init() method, from the selenium_webcrawler.py (ie, the main webcrawler script!!)."""
     return region_URL.split('//')[1].split('.')[0]
 
-# 1c) Import all available recursively search parent direc to look up CSV files within subdirectories
-def recursively_import_all_CSV_and_concat_to_single_df(parent_direc:str, region_code: str, fn_regex=r'*.csv'):
-    """Recursively search directory of scraped data for given region, and look up all CSV files.
-    Then, import all CSV files to a single Pandas' df using pd.concat()"""
-    path =  parent_direc # specify parent path of directories containing the scraped rental listings CSV data -- NB: use raw text--as in r'path...', or can we use the double-back slashes to escape back-slashes??
+# 1bi) Check whether there is any scraped data saved for given (user-selected) region
+def check_data_exists_for_given_region(parent_direc:str, region_code: str):
+    # specify parent path of directories containing the scraped rental listings CSV data -- NB: use raw text--as in r'path...', or can we use the double-back slashes to escape back-slashes??
+    path =  parent_direc 
     # use backslashes to separate the parent direc from the region code
     backslashes_separator = "\\\\"
     # add *region code* to parent direc so we can recursively search the scraped data for that specific region:
     path = f'{path}{backslashes_separator}{region_code}' # add region code to path
 
-    # recursively search path for CSV files, and concat to single DataFrame:
-    df_concat = pd.concat((pd.read_csv(file, # import each CSV file
-                                        sep=',', encoding = 'utf-8'  # assume standard CSV (ie, comma separated) format and use utf-8 encoding
-                                        ) for file in glob.iglob( # iterate over each CSV file in path
-                                            os.path.join(path, '**', fn_regex), 
-                                            recursive=True)), ignore_index=True)  # recursively iterate over each CSV file in path, and use os.path.join to help ensure this concatenation is OS independent
+    # recursively look up all CSV files in path
+    all_files = glob.glob(os.path.join(path, "*.csv"))
+    
+    names = [os.path.basename(x) for x in all_files]
 
-    return df_concat
+    for file_, name in zip(all_files, names):
+        #read first row only
+        file_df = pd.read_csv(file_,nrows=1)    
 
-# 1d) Verify whether *any* data have been scraped for given region 
+        file_df['file_name'] = name
+        df = df.append(file_df)
+
+        return df
+
+
+# 1c) Import all CSV files saved since the last rental listings data were stored in the SQL table, ie, based on the files' suffix indicating the date when the webcrawler was run, relative to the latest_date SQL query results 
+def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_code: str, latest_date_from_query):
+    """Recursively search directory of scraped data for given region, and look up all CSV files.
+    Then, import all CSV files to a single Pandas' df using pd.concat(). Only apply filter if the SQL table
+    contains at least some data for given region."""
+
+    # Only apply this filter if the SQL table already contains at least some data for given region
+    if latest_date_from_query != "None":  # the SQL table contains at least some data for given region
+        # get path for scraped data pertaining to the given region:
+        path = os.path.join(parent_direc, region_code) 
+
+        print(f"Path to scraped data for {region_code} region:\n{path}") 
+
+        # specify datetime format used for the scraped_data CSV files 
+        datetime_format_scraped_data = "%m_%d_%Y"
+
+        # initialize list to contain all scraped data file names 
+        files_list = []
+
+        # recursively iterate over parent directory and all of its subdirectories, to get paths to all CSV files
+        for dirs, subdirs, files in os.walk(path):
+
+
+            # iterate over each file within parent directory and all subdirectories
+            for file in files:
+                
+                # only include CSV files: 
+                if file.endswith('.csv'):
+                    # grab full paths for all found CSV files--ie, join directories (dirs) with the CSV file namesn (file from files)  
+                    files_list.append(os.path.join(dirs, file))
+
+
+        # assign all CSV file paths to a DataFrame:
+        df = pd.DataFrame(files_list, columns=['files'])
+
+        print(f"\n\nSome scraped data CSV file paths:\n{df['files'].head()}\n")
+        
+        # # Parse the dates from each CSV file, and keep the same 'MM_DD_YYY' format (**including the underscore delimiters!!), as the webcrawler CSV file naming convention:
+        df['date_of_file'] = df['files'].str.extract(r'(\d{2}_\d{2}_\d{4})')
+
+        # convert col to datetime
+        df['date_of_file'] = pd.to_datetime(df['date_of_file'], format='%m_%d_%Y')
+
+        print(f"Scraped file data dates, before filtering:\n{df['date_of_file'].head()}")
+
+        # use latest_date_from_query as the start date of our file date-filter:
+        # transform the data to be in a "%M-%d-%Y" format, ton match the file naming structure (ie, the underscores and month, then day, then year format are important to filter the files properly):
+        start_date = latest_date_from_query.strftime("%m-%d-%Y") # reformat datetime format to match the date_of_file format
+
+        # # # get current datetime, which will serve as our end-date filter, since the latest stored scraped data should highly likely be no more recent than when this script was run 
+        datetime_now = datetime.datetime.now()
+        # # wrangle this date to be in mm_dd_YYYY format:
+        # # end_date = datetime.datetime('01-15-2023').strftime("%m-%d-%Y")
+        # # end_date = '01-15-2023'
+
+        end_date = datetime.datetime.strptime(str(datetime_now),
+                                              '%m-%d-%Y') 
+        
+
+        # sanity check on dates to be used to filter to the daterange
+        print(f'Start date for file filter:\n{start_date}')
+
+        print(f'End date for file filter:\n{end_date}\n')
+
+        print(f'Data type of end_date filter object:\n{type(end_date)}')
+
+
+        ## ## Apply  the daterange filter, so we get only the CSV files that are more recent than the data stored in the SQL tables:
+        # file_date_slice =  df[df['date_of_file'].between(start_date, end_date)]
+
+        datetime_mask = (df['date_of_file'] > start_date) & (df['date_of_file'] <= end_date)
+        file_date_slice = df.loc[datetime_mask]
+
+        # having applied the filter, just grab the CSV file paths, and convert to pf.ist
+        file_filtered_dates_list =  file_date_slice['files'].tolist()
+
+        # briefly, look up the total number of CSV files of scraped data after applying the date range filter: 
+        print(f"\n**After filtering:\nNumber of all recursively found CSV files:\n{len(file_filtered_dates_list)}\n")
+
+
+        ## Finally, import the CSV files based on the date-filtered CSV files list, then concat to a single df
+        dfs = [pd.read_csv(file_path) for file_path in file_filtered_dates_list]  # import the filtered CSV files
+        
+        # concat to a single df:
+        df = pd.concat(dfs)
+
+
+     # account for scenario in which *no data* has yet been inserted into the SQL table:
+    else:   # ie, latest_date_from_query == "None"
+        pass  # do not apply filter
+    
+    return df
+
+
+# 3.) b.) filter Pandas' dataframe by latest date of date_posted found via MAX( SQL query
+def filter_df_since_specified_date(df: DataFrame, latest_date_sql_str: str):
+    """Filter the imported scraped dataset to all data newer than the specified date of data stored in the SQL table, which is given via the MAX(posted_date) query results."""
+    # only apply the filter if the SQL query indicates at least some data has been stored in the SQL table, for given region
+    if latest_date_sql_str != "None": #  a) latest_date_sql_str query result object is not literally "None" 
+
+        # define datetime mask, so we ensure we will be inserting only more recent data than what's already stored in the table
+        datetime_mask = (df['date_posted'] > latest_date_sql_str)
+        # apply the datetime filter
+        df = df.loc[datetime_mask]
+
+    # account for a scenario in which *no data* has yet been inserted into the SQL table
+    else:   # ie, the query returned target_date of "None" or an empty DataFrame
+        print("No data for given region has yet been inserted into the SQL table, so we do not need to apply a datetime filter.")
+        pass  # do not apply filter, since no data has yet been inserted into SQL table
+    return df
+
+
+
+
+    
+
+
+# 1d) Verify whether *any* data have preivously been scraped for given region (ie, based on sscraped data stored on current local machine) 
 def verify_scraped_data_exists_for_region(df, region_codes):
     # check if at least 1 row of scraped data exists
     if len(df.index) > 0:
@@ -107,7 +243,7 @@ class SQL_Database:
         
         except pyodbc.Error as err:  # account for possible pyodbc SQL Server connection error
             print("We were not able to connect to the SQL server database properly. Please double-check config.json and try again.") 
-        
+
         # initialize cursor so we can execute SQL code
         cursor = conn.cursor() 
 
@@ -120,13 +256,11 @@ class SQL_Database:
         cursor.close()
         conn.close()
 
-        ## sanity check:
-        print(f"\nLatest date of scraped data inserted into the SQL table:\n{max_date}")
         return max_date
 
 
-    # 5.) insert filtered and cleaned pandas' df into SQL table
-    def insert_df_to_SQL_ETL(self, df):
+    # 5.) **insert filtered and cleaned pandas' df into SQL table (**final step of data pipeline)
+    def insert_df_to_SQL_ETL(self, df, region_code):
         """Insert scraped Craigslist rental listings data (ie, the Pandas' dataframe) to SQL Server database 'rental' table"""
 
         # establish connection to SQL Server database-specify login credentials:
@@ -145,10 +279,16 @@ class SQL_Database:
 
         # initialize cursor so we can execute SQL code
         cursor = conn.cursor() 
-
-        cursor.fast_executemany = True  # speed up data ingesting by reducing the numbers of calls to server for inserts
+        # speed up data ingesting by reducing the numbers of calls to server for inserts
+        cursor.fast_executemany = True  
         
         # insert scraped data from df to SQL table-- iterate over each row of each df col via .itertuples() method
+
+        ## NB!: **only** include several of the columns for purposes of debugging *why* the SQL inserts are not working
+        # --this is posibly due to 2 datetime formats for date_posted & or possibly due to issues with float data of the listingid's or even bathrooms data
+
+        # ## get a subset of the df columns
+        # df = df[['ids', 'sqft', 'cities', 'prices', 'bedrooms', 'date_posted']]
 
         # Get the number of needed '?' placeholders (ie, best practice to help prevent SQL injections) by looking up the # of cols (ie, len()) of the dataframe), and use .join() to have each question mark seprated by commas:
         q_mark_str = ','.join('?'*len(df.columns))    # get '?' placeholders for each col of df
@@ -163,6 +303,23 @@ class SQL_Database:
                 apt, in_law_apt, condo, townhouse, cottage_or_cabin, single_fam, duplex, flat, land,
                 is_furnished, attached_garage, detached_garage, carport, off_street_parking, no_parking, EV_charging, air_condition, no_smoking) 
                 VALUES ({q_mark_str})""",
+
+
+                # # NB!: try the following query to help ensure
+                # # create temp table to insert all data from the pipeline, which we will then use for a MERGE statement to provide a WHEN NOT MATCHED clause to ensure no duplicate ids will be spring up when actually inserting the data into the actual, long-term table
+                # CREATE TABLE #MyTempTable (col1 VARCHAR(50), col2, col3...);
+                # # insert all of the cleaned data into the temporary table
+                # INSERT INTO #MyTempTable(col1, col2, col3, col4)
+                # VALUES (?,?,?,?)
+                # # create clustered index based on the temporary table's primary key 
+                # CREATE CLUSTERED INDEX ix_tempCol1 ON #MyTempTable (col1);
+                # # implement the final part of the data pipeline by using a MERGE statement to avoid inserting any duplicate ids, via a USING...WHEN NOT MATCHED THEN clause!:
+                # MERGE INTO db_name.dbo.table_name AS TARGET
+                # USING #MyTempTable AS SOURCE ON TARGET.COL1 = SOURCE.COL1 AND TARGET.COL2 = SOURCE.COL2 ...
+                # WHEN NOT MATCHED THEN
+                #     INSERT(col1, col2, col3, col4)
+                #     VALUES(source.col1, source.col2, source.col3, source.col4);
+
                 (row.ids,
                 row.sqft,
                 row.cities,
@@ -226,13 +383,15 @@ class SQL_Database:
                 quit()
 
 
-        # # sanity check-- ensure some data has been inserted into new SQL table
-        sql_table_count_records = conn.execute("""SELECT COUNT(*) FROM rental;""").fetchall()
-        print(f"\nThe number of total records currently stored in the SQL table is:\n{sql_table_count_records[0]}\n")     
-        
-        sql_query_for_record_samples = conn.execute("""SELECT TOP 3 * FROM rental;""").fetchall() # check out several of the records
-        print(f"\nA few of the inserted records are: {sql_query_for_record_samples}")
+        # # sanity check-- ensure some **new** data has been inserted into SQL table, for given region, ie, based on showing a newer MAX(date_posted)!
+        # specify SQL query
+        query = "SELECT MAX(date_posted) AS latest_date FROM rental WHERE region = ?;"  # check latest date of stored listings data, for given region 
 
+        # perform query, and convert query results to Pandas' df, with respect to given region (eg, sfbay)
+        max_date = pd.read_sql(sql = query, con = conn, params =(region_code,))   # NB!: we need to pass the region_code str argument as a tuple to satisfy .read_sql() method's API for the params parameter!
+
+        print(f"\nThe latest date_posted date--**after** inserting the newer data--for the SQL table is now:\n{max_date}\n")     
+        
         cursor.close()
         conn.close()    
     
@@ -242,21 +401,36 @@ def datetime_col_to_str_of_datetime(df: DataFrame, datetime_col:str):
     """Given datetime col from pandas' DataFrame, transform to a string of the datetime value."""
     return df[datetime_col].head(1).astype(str).reset_index().loc[0, datetime_col] 
 
+# 2c) Transform query results string to datetime, but change the datetime format to match the CSV file naming format:
+def str_to_datetime_with_different_format(str_to_convert: str, initial_datetime_format: str, new_datetime_format: str):
+    return datetime.datetime.strptime(str_to_convert, initial_datetime_format).strftime(new_datetime_format)
+ 
+ # NB: the above re-formats the query result to the datetime format we want, but converts it to a str, instead of datetime. Thus, we need to convert the reformatted latest_date_str_mm_dd_yyyy str to datetime:
+def str_val_to_datetime(str_to_convert, datetime_format):
+    return datetime.datetime.strptime(str_to_convert, datetime_format)
 
-# 3.) a.) Transform Pandas' dataframe 'date_posted' column to datetime:
+
+
+## Transform columns to datetime
+
+## NB: First we need to remove extraneous trailing chars in data_posted
+def clean_date_posted_data(df):
+    return df['date_posted'].str.rstrip('-0700')
+
+
+
 def transform_cols_to_datetime(df: DataFrame, col_to_convert:str):
     """Transform relevant column(s) to datetime using pd.to_datetime() method"""
-    return pd.to_datetime(df[col_to_convert], infer_datetime_format=True) # format= '%Y-%m-%d-%H:%M'
+    return pd.to_datetime(df[col_to_convert])
+
+def transform_cols_to_datetime_specific_format(df: DataFrame, col_to_convert:str, datetime_format):
+    """Transform relevant column(s) to datetime using pd.to_datetime() method.
+    Specify date format via .strftime() method. We need to chain pd.to_datetime() to another pd.to_datetime() so we can convert the object result
+    from .strftime to datetime!"""
+    # return datetime format to the nearest hour and minute
+    return pd.to_datetime(pd.to_datetime(df[col_to_convert]).dt.strftime(datetime_format))
 
 
-# 3.) b.) filter Pandas' dataframe by latest date of date_posted found via MAX( SQL query
-def filter_df_since_specified_date(df: DataFrame, target_date: str):
-    """Filter the imported scraped dataset to all data newer than the specified date (as determined via the MAX(posted_date) query)."""
-    if target_date != "None":  # account for scenario in which *no data* has yet been inserted into the SQL table
-        df = df.loc[df['date_posted'] > target_date]  # filter to data greater than specified date
-    else:   # ie, target_date == "None"
-        pass  # do not apply filter, since no data has yet been inserted into SQL table
-    return df
 
 
 # 4.) Perform all additional data cleaning procedures to prep the dataframe prior to initiating the pyodbc pandas' to SQL Server data pipeline inserts:
@@ -270,12 +444,22 @@ def remove_nulls_list(df, list_of_cols):
     """Remove rows that do not have price, city name, kitchen, sqft, or listing ID data, as these are essential variables in this rental listings dataset."""
     return df.dropna(subset=list_of_cols)
 
+# def remove_nulls(df):
+#     """Remove rows that do not have price, city name, kitchen, sqft, or listing ID data, as these are essential variables in this rental listings dataset."""
+#     return df.dropna()
+
+""" Clean the city names data (ie, non null city names) by removing extraneous address & street data, non-sfbay cities, etc."""
 
 # NB!: to more precisely clean city names, we will run a short webcrawler to grab wikipedia table data on all SF Bay city names:
+# Identify a list of all unique SF Bay Area & SC county city names, and output to a list
 
 # a) Create a few simple webcrawlers to grab the city names data from 2 wikipedia tables
+### SF bay area city names data
 
-# SF Bay cities data: access page, and grab city names, append to list
+
+
+
+# access page, and grab city names, append to list
 
 def obtain_cities_from_wiki_sfbay(webpage_url,list_of_cities):
     # initialize web driver
@@ -328,6 +512,8 @@ def obtain_cities_from_wiki_sc(webpage_url,list_of_cities):
     # search for given wiki data tables:
     table = driver.find_elements(By.XPATH, xpaths_table)
 
+
+    print(f'Full table:\n\n{table}\n\n\n\n\n')
 
     for row in table:
         print(f'City names:{row.text}')
@@ -393,11 +579,64 @@ def parse_city_names_from_listing_URL(df, unique_city_names_dash_delim:list):
 
 
 def remove_dashes_from_words_in_col(df, col):
-    return df[col].str.replace('-', '', regex=True)
+    return df[col].str.replace('-', ' ', regex=True)
 
 
 def capitlize_each_word_in_row_for_col(df, col):
     return df[col].str.title()
+
+
+
+
+def clean_split_city_names(df, address_critera: list, neighborhood_criteria:list, split_city_delimiters: list, incorrect_city_names:dict, cities_not_in_region:dict, cities_that_need_extra_cleaning:dict):
+    """Clean city names data in several ways:
+    a.) Remove extraneous address & neighborhood data placed in the city names HTML object, such as 'Rd', 'Blvd', or 'Downtown'.
+    b.) Unsplit city names data that are split via ',' & '/' delimiters.
+    c.) Replace abbreviated or mispelled city names.
+    ci) Set all city names to lowercase by using .lower(), for sake of consistent data cleaning (casing will be parsed later).
+    d.) Remove city names that do not exist within the SF Bay Area (e.g., 'Redding')--ie, by using .replace() and replacing with whitespace (ie, ' '). 
+    e.)Remove any digits/integers within the city names data--ie, by using a '\d+' regex as the argument of str.replace() and replace it with empty strings.
+    f.) Remove any city names records that are left with merely empty strings (ie, the other steps removed all data for that given cities record).
+    g.) Remove any whitespace to avoid the same city names from being treated as different entities by Pandas, Python, or SQL. 
+    h.) Use str.capwords() to capitalize words (ie, excluding apostrophes).
+    i.) Replace city names that are mispelled after having removed various street and neighborhood substrings such as 'St' or 'Ca'--e.g., '. Helena' should be 'St. Helena'. 
+    j) Remove any remaining empty strings, null records, or rows with literal 'nan' values (ie, resulting from previous data cleaning steps)"""
+    # specify extraneous street & address data (e.g., 'Rd') that we want to remove from the city names column:
+    addr_criteria = '|'.join(address_critera) # Join pipe ('|') symbols to address list so we can str.split() on any one of these criteria (ie, 'or' condition splitting on each element separated by pipes):
+    # specify extraneous neighborhood criteria that we should also remove from the column
+    nbhood_criteria = '|'.join(neighborhood_criteria) # specify neighborhood names as well as state abbreviation (shown on website as ' Ca') that is shown without the usual comma delimiter, which we should remove from the rows of cities col
+    # b.) specify delimiters we need to refer to un-split city names:
+    split_city_delimiters = '|'.join(split_city_delimiters) # join pipes to delimiters so we can use str.split() based on multiple 'or' criteria simultaneously
+    # clean city names data by removing extraneous address & neighborhood data, and unsplitting city names based on ',' & '\' delimiters
+    df['cities'] =  df['cities'].str.split(addr_criteria).str[-1].str.replace(nbhood_criteria, '', case=True).str.lstrip()
+    df['cities'] = df['cities'].str.split(split_city_delimiters).str[0] #unsplit city names based on comma or forward-slash delimiters
+    # c.) replace specific abbreviated or mispelled city names
+    df = df.replace({'cities':incorrect_city_names}, regex=True) # replace mispelled & abbreviated city names
+    # ci) Set all city names data to lower-case temporarily, to ease the data cleaning & wrangling:
+    df['cities'] = df['cities'].str.lower()
+    
+    # d) remove data in which the cities are not actually located in the sfbay region:
+    df['cities'] = df['cities'].replace(cities_not_in_region, '', regex=True )  # remove (via empty string) cities that are not actually located in the sfbay region
+    # e.) Remove digits & integer-like data from cities column:
+    df['cities'] = df['cities'].str.replace('\d+', '')  # remove any digits by using '/d+' regex to look up digits, and then replace with empty string
+    # f.) Remove any rows that have empty strings or null values for cities col (having performed the various data filtering and cleaning above)
+    df = df[df['cities'].str.strip().astype(bool)] # remove rows with empty strings (ie, '') for cities col 
+    df = df.dropna(subset=['cities']) # remove any remaining 'cities' null records
+    # g.) Remove whitespace
+    df['cities'] = df['cities'].str.strip() 
+    # h.) capitalize the city names using str.capwords() 
+    df['cities'] = df['cities'].str.split().apply(lambda x: [val.capitalize() for val in x]).str.join(' ')
+    # i) Replace city names that are mispelled after having removed various street and neighborhood substrings such as 'St' or 'Ca'--e.g., '. Helena' should be 'St. Helena' & 'San los' should be 'San Carlos'. Also, remove any non-Bay Area cities such as Redding:
+    df = df.replace({'cities':cities_that_need_extra_cleaning})
+    # j) Remove any remaining empty strings, null records, or rows with literal 'nan' values (ie, resulting from previous data cleaning steps)
+    # remove rows with literal 'nan' values
+    df['cities'] = df['cities'].replace('nan', '', regex=True)
+
+    df = df[df['cities'].str.strip().astype(bool)] # remove rows with empty strings (ie, '') for cities col 
+     
+    df = df.dropna(subset=['cities']) # remove any remaining 'cities' null records
+    return df
+
 
 
 def transform_cols_to_indicators(df, list_of_cols):
@@ -429,22 +668,30 @@ def transform_cols_to_int(df, list_of_cols_to_num):
 def transform_shared_and_split_to_ones(df: DataFrame, col_to_transform: str):
     """Transform any records (from given col) containing the string values of 'shared' or 'split' to a value of 1."""
     # transform col to object, so we can use Python str methods to transform the data
-    df[col_to_transform] = df[col_to_transform].astype('object') 
+    # df[col_to_transform] = df[col_to_transform].astype('object') 
+
+    df[col_to_transform] = df[col_to_transform].astype(str)
     bedroom_replace_criteria = ['shared', 'split']
     bedroom_replace_criteria = '|'.join(bedroom_replace_criteria) # join pipe symbols so we can use str.replace() on multiple 'or' conditions simultaneously 
     return df[col_to_transform].str.replace(bedroom_replace_criteria,'1')
+    # return df[col_to_transform].str.replace(bedroom_replace_criteria,'')
+
 
 # replace any ambiguous values for bathrooms data--such as '9+' with empty strings (ie, essentially nulls) 
 def replace_ambiguous_data_with_empty_str(df: DataFrame, col_to_transform: str):
     """Replace ambiguous rows of data (ie, any containing a plus sign) for bathrooms col with empty strings"""
     return df[col_to_transform].str.replace(r'\+', '')  # use str.replace() to use a regex to search for plus signs, and in effect remove these by replacing them with empty strings 
 
-def remove_bedroom_and_br_nulls(df: DataFrame):
-    return df.dropna(subset=['bedrooms', 'bathrooms'])
+# def remove_bedroom_and_br_nulls(df: DataFrame):
+#     df[['bedrooms', 'bathrooms']] = df.dropna(subset=['bedrooms', 'bathrooms'])
+#     return df
 
 
 def transform_cols_to_float(df: DataFrame, col_to_transform: str):
     return df[col_to_transform].astype('float32')
+
+def round_to_nearest_decimal_pt(df, col):
+    return df[col].round(2) 
 
 
 def remove_col_with_given_starting_name(df, col_starting_name: str):
@@ -460,7 +707,6 @@ def main():
         'San Diego, CA':'https://sandiego.craigslist.org/',
         'Chicago, IL':'https://chicago.craigslist.org/',
         'Seattle, WA':'https://seattle.craigslist.org/',
-        # 'Tacoma, WA':'https://seattle.craigslist.org/tac/',
         'Los Angeles, CA':'https://losangeles.craigslist.org/',
         'Phoenix, AZ':'https://phoenix.craigslist.org/',
         'Portland, OR':'https://portland.craigslist.org/',
@@ -483,16 +729,23 @@ def main():
 
     region_URL = return_hompeage_URL_for_given_region(clist_region_and_urls, region_name)
 
-    # prase region code from homepage url of selected region:
+    # parse region code from homepage url of selected region:
     region_code = parse_region_code_from_craigslist_URL(region_URL)
 
     # sanity check on region code:
-    print(f'\nRegion code: {region_code}\n')
+    print(f"\nSelected region code:\n{region_code}\n")
 
-    # # 1) Import all scraped rental listings data from given region:
+    print(f"Current direc:{os.getcwd()}")
+
+
+    # # 1) a) Import all scraped rental listings data from given region:
+
     # specify path to scraped data
     # get root directory of project by getting parent directory (ie, using os's .pardir method) 
     parent_directory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+
+    print(f"\nParent (root) directory:\n{parent_directory}\n")
+
     
     # specify folder of webcrawler's scraped data
     scraped_data_folder = 'scraped_data'
@@ -500,69 +753,165 @@ def main():
     # get full path to scraped_data, by referring to root directory (ie, parent_directory) & scraped_data_folder
     scraped_data_parent_path = os.path.join(parent_directory, scraped_data_folder)
 
-    print(f'The directory of the webcrawler scraped data is:\n{scraped_data_parent_path}\n\n')
-    
+    print(f'The directory of the scraped data is:\n{scraped_data_parent_path}\n\n')
+
+
+
+
     try:   
-        # attempt to import and concat scraped data for given region:
-        df = recursively_import_all_CSV_and_concat_to_single_df(scraped_data_parent_path, region_code)
+        df_data_check_for_region = check_data_exists_for_given_region(scraped_data_parent_path, region_code)
 
-        # 
-        print("\nScraped data for region exists. ETL pipeline can proceed\n")
 
-        # sanity check on imported data
-        print(f"Sanity check--Some info of the imported scraped data: {df.info()}") # sanity check: examine size of dataset, columns, etc.
+        # Inform user that data do exist for particular region selected, so the pipeline can continue as expected
+        print(f"\nScraped data for {region_code} region exists.\nETL pipeline can proceed\n")
+
 
     except ValueError:   # account for potential Valueerror--ie, if there is *no* available scraped data for the given region
-        print("\nSorry, there is no data available for the selected region.\n")
+        # inform user no data exists for given region, so this script cannot proceed
+        print("\nSorry, there is no data available for the selected region.\nPlease run this script again with a different region, or run the webcrawler at least once for the selected region.")
 
 
     ## 2) Determine the last date of listings data stored in SQL table, so we can filter the dataset before inserting the data:
 
-    # specify path to json file containing SQL configuration/username data
-    sql_config_path = "D:\\Coding and Code projects\\Python\\craigslist_data_proj\\CraigslistWebScraper\\SQL_config\\config.json" 
+    # SQL config json file: specify folder (relative to root directory) & file name of json file containing SQL configuration & login data 
+    sql_config_folder_and_json = "SQL_config\\config.json" 
+
+    # get full path to SQL config, by referring to root directory (ie, parent_directory) & sql_config_folder_and_json
+    sql_config_path = os.path.join(parent_directory, sql_config_folder_and_json)
 
     SQL_db = SQL_Database(sql_config_path)  # NB: initialize class and pass in path to the json SQL configuration file 
     
-    ## 2a.) specify query to select the latest date based on date_posted:
-    # sql_query = "SELECT MAX(date_posted) AS latest_date FROM rental;"
-    # determine last date of listings records stored in SQL table, **for given region**
-    # latest_date = SQL_db.determine_latest_date(sql_query, region_code)
-
+    ## 2a.) implement query to select the latest date based on date_posted:
     latest_date = SQL_db.determine_latest_date(region_code)
 
+    print(f"\n\nThe latest date of the scraped data stored in the SQL table, for the {region_code} region is:\n{latest_date}")
 
-    ## 2) b.) Transform query results to string:
 
-    # specify name of df (ie, latest_date) containing the query results) and datetime col to transform
-    latest_date, dt_col = latest_date, 'latest_date' 
-    #apply function using the 2 arguments shown above
-    latest_date_str = datetime_col_to_str_of_datetime(latest_date, dt_col)
-    # sanity check
-    print(f"\n\nThe latest date among the scraped data stored in the SQL table is:\n{latest_date_str}")
-
-    ## 3.) Filter pandas' df dataset to data after last data inserted into SQL table--ie, the latest_date_str whose value we initially obtained from the MAX(date_posted) query
+    # leave latest_date unchanged if SQL query results indicate no data have been inserted into SQL database so far for given region
+    # if latest_date.values.all()  != "None":
+    if latest_date.isna().values.any():
+        pass
+        
+    # only make adjustments to latest_date object if query returns a non-null value
+    else:  
     
-    ## NB: convert specific cols to datetime before filtering (for skae of consistency and replicability of this data pipeline)
-    df['date_of_webcrawler'] =  transform_cols_to_datetime(df,'date_of_webcrawler')
-    df['date_posted'] = transform_cols_to_datetime(df,'date_posted')
-    #sanity check
-    print("Sanity check on datetime cols: {df[['date_posted', 'date_of_webcrawler']].head()}")
+        ## 2) b.) Transform query results to string:
 
-    # filter df by SQL table query date--ie, via latest_date_str:
-    df = filter_df_since_specified_date(df, latest_date_str)
-    # sanity check:
-    print(f"The newest scraped data not stored in the SQL table is--\n*NB: this should be an empty df if we have already stored all of the df's data into the SQL table*: \n\n{df['date_posted']}")
+        # specify name of df (ie, latest_date) containing the query results and datetime col to transform
+        latest_date, dt_col = latest_date, 'latest_date' 
+        # convert query results to str
+        latest_date_str = datetime_col_to_str_of_datetime(latest_date, dt_col)
 
-    ## 4.)  Data cleaning:
+        
+        # sanity check
+        print(f"\n\nThe latest date among the scraped data stored in the SQL table is:\n{latest_date_str}")
+        print(f"Data type of this object is--NB: make sure it's str:\n{type(latest_date_str)}")
+
+        # specify datetime format of query results
+        initial_datetime_format =  "%Y-%m-%d %H:%M:%S"
+        # convert query results from str to datetime
+        latest_date_dt = str_val_to_datetime(latest_date_str, initial_datetime_format)
+
+
+    
+    ## 3.) Recursively import all CSV files to scraped data with dates *after* last data inserted into SQL table--ie, the latest_date whose value we obtained from the MAX(date_posted) query
+
+    # import and concat all scraped data for given region *since* latest data stored in SQL table--ie, given by MAX(date_posted):
+    df = import_all_CSV_since_latest_date_and_concat_to_df(scraped_data_parent_path, region_code, latest_date_dt)
+
+    ## 3b) Data Cleaning: perform the first data cleaning steps, in particular those that improve runtime efficiency: e.g., by reducing thw size of the dataset by removing duplicate ids or rows with missing data (ie, nulls), etc
+    
+    ## De-duplicate data based on listing ids--ie, since each rental listing has unique ids
+    df = deduplicate_df(df)
+    # sanity check
+    clist_duplicate_ids_check = df[df.duplicated("ids", keep= False)] 
+    print(f"There should be no remaining duplicate listing ids (ie, 0 rows): \n{clist_duplicate_ids_check.shape[0]}") # sanity check --check that number of duplicate rows is false (ie, wrt duplicate listing ids)
+    clist_duplicate_ids_check = []  # free memory
+
+
+    # # ## 3.) Filter pandas' df dataset to data after last data inserted into SQL table--ie, the latest_date_str whose value we initially obtained from the MAX(date_posted) query
+    
+    # ## NB: before converting to datetime, re-format the string datetime-like columns to match the same yyyy-MM-dd format as that of the SQL Server table!
+    # reformat to yyyy-MM-dd datetime format
+
+
+    ## convert specific cols to datetime before filtering (for skae of consistency and replicability of this data pipeline
+    ## NB!: we need to reformat the datetime format of these 2 columns-- why?: b/c the datetime formats of the input data differ from that of the SQL Server datetime data type, 
+    
+    ## 3a) convert the 2 columns to datetime format--first, convert to datetime, but allow for coerced errors due to date format inconsistencies 
+
+
+    ## ewxamine the datetime data **before** doing data cleaning on them:
+    print(f"\n\ndata_posted col values **before** doing data cleaning:\n{df['date_posted']}\n")
+
+
+    # # specify SQL-friendly datetime format that we need to use:
+    # datetime_for_sql = "%Y-%m-%d %H:%M:%S"
+    
+
+
+    # # NB:Convert the 2 relevant columns to datetime data type, referring to the initial datetime format:
+
+
+    # clean date_posted data--remove trailing '-0700' char (if exists)-- before converting to datetime:
+    df['date_posted'] == clean_date_posted_data(df)
+
+    # next, remove any 'NaT'or other null values for both datetime columns so that we only include the values that have on of the 2 delineated datetime formats:
+    list_of_datetime_cols = ['date_of_webcrawler', 'date_posted']
+
+    df = remove_nulls_list(df, list_of_datetime_cols)
+
+    # convert each of the 2 columns to datetime:
+    df['date_of_webcrawler'] = transform_cols_to_datetime(df, 'date_of_webcrawler')
+
+    # specify datetime format for date_posted as nearest hour and minute 
+    dt_format = "%Y-%m-%d %H:%M"
+    # transform date_posted col to datetime, given specified format
+    df['date_posted'] = transform_cols_to_datetime_specific_format(df, 'date_posted', dt_format)
+
+
+    ## Sanity check to ensure datetime conersion was successful:
+    print(f"Sanity check to ensure the columns have been successfully converted to datetime:\n{df[['date_posted', 'date_of_webcrawler']].info()}")
+
+
+    print(f"Sanity check on datetime col data type: {df['date_posted'].dtype}\n")
+
+
+
+    ## 3b) Filter df by datetime with respect to date_posted--based on the results from the SQL table query date (NB: this is separate from the datetime mask we applied earlier to filter the CSV files, which was based on the date_of_webcrawler values of the suffix of the file names...):
+    df = filter_df_since_specified_date(df, latest_date_dt) 
+
+
+    # sanity check
+    print(f"\n\nSanity check: Ensure the data have been filtered properly to be newer than the latest date stored in the SQL table:\n{df[['date_posted', 'prices']].sort_values(by='date_posted')}")
+
+
+    print(f"**After applying date_posted filter from MAX() sql query,\nsanity check on filtered datetime col values: {df['date_posted']}\n")
+
+
 
     ## remove any rows with null listing ids, prices, sqft, or city names   
-    list_cols_to_remove_nulls = ['prices', 'ids', 'sqft', 'kitchen', 'cities']  
+    list_cols_to_remove_nulls = ["prices", "ids", "sqft", "kitchen", "cities"]  
+    # df = remove_nulls_list(df, list_cols_to_remove_nulls)
+
     df = remove_nulls_list(df, list_cols_to_remove_nulls)
+
 
     # sanity check
     print(f"Remaining price, city name, sqft, kitchen, & listing id nulls: \n{df[list_cols_to_remove_nulls].isnull().sum()}")
 
-    ##  Clean city names data:
+
+
+
+
+    ## 4.) Additional data cleaning, wrangling, & data type transformations:
+
+
+
+    ## Clean city names data
+
+
+    # clean city names data:
     # NB: run a wikipedia table webcrawler to get a list of all possible SF Bay city names:
 
     # initialize lists:
@@ -619,79 +968,19 @@ def main():
 
     # clean city names data
     df = parse_city_names_from_listing_URL(df, sfbay_city_names)
+
+    # remove dashes from city names col:
+    df['cities'] = remove_dashes_from_words_in_col(df, 'cities')
     
-    address_criteria = ['Boulevard', 'Blvd', 'Road', 'Rd', 'Avenue', 'Ave', 'Street', 'St', 'Drive', 'Dr', 'Real', 'E Hillsdale Blvd', 'Ln', '-brookview', 'Lincoln Hill-'] 
 
-    # specify various extraneous neighborhood names such as 'Downtown' 
-    neighborhood_criteria = ['Downtown', 'Central/Downtown', 'North', 'California', 'Ca.', 'Bay Area', 'St. Helena', 'St', 'nyon', 
-    'Jack London Square', 'Walking Distance To', 'El Camino', 'Mendocino County', 'San Mateo County', 'Alameda County', 'Rio Nido Nr', 'Mission Elementary', 
-    'Napa County', 'Golden Gate', 'Jennings', 'South Lake Tahoe', 'Tahoe Paradise', 'Kingswood Estates', 'South Bay', 'Skyline', 'San Antonio Tx', 
-    'East Bay', 'Morton Dr', 'Cour De Jeune', 
-    'West End', 'Wikiup', 'Rotary Way', 'Old City', 'Greenwich Cir. Fremont', 'Mission District'] 
+    df['cities'] = capitlize_each_word_in_row_for_col(df, 'cities')
 
-    # specify what delimiters we want to search for to unsplit the split city names data:
-    split_city_delimiters =  [',', '/', ' - ', '_____', '#']
 
-    # specify dictionary of abbreviated & mispelled cities:
-    incorrect_city_names = {'Rohnert Pk':'Rohnert Park', 'Hillsborough Ca': 'Hillsborough','Fremont Ca':'Fremont', 'South Sf': 'South San Francisco', 'Ca':'', 'East San Jose':'San Jose', 'Vallejo Ca':'Vallejo', 'Westgate On Saratoga .':'San Jose', 'Bodega':'Bodega Bay', 'Briarwood At Central Park':'Fremont', 'Campbell Ca':'Campbell', 'Almaden':'San Jose', '.':'', 'East Foothills':'San Jose', 'Lake County':'', 'West End':'Alameda', 'Redwood Shores':'Redwood City', 'Park Pacifica Neighborhood':'Pacifica', 'Pt Richmond':'Richmond'}
-
-    # specify dictionary of cities that are not located in sfbay (ie, not located in the region):
-    cities_not_in_region = {'Ketchum':'', 'Baypoinr':'', 'Quito': '', 'Redding':'', 'Bend' :'', 'Near Mount Lassen':'', 'Tracy':'', 'Middletown':'', 'Truckee':'', 'Midtown Sacramento':'', 'Tro Valley-':'', 'Neighborhood':''}
-
-    # specify dictionary of city names that are mispelled after having removed various street and neighborhood substrings:
-    cities_that_need_extra_cleaning = {'. Helena': 'St. Helena', '. Helena Deer Park': 'St. Helena', 'San Los':'San Carlos', 'Tro Valley':'Castro Valley', 'Rohnert Pk':'Rohnert Park',
-    'Pbell':'Campbell', 'Pbell Ca':'Campbell', 'American Yon':'American Canyon', 'Millbrae On The Burlingame Border':'Millbrae', 'Ockton Ca': 'Stockton', '. Rohnert Park': 'Rohnert Park', 'Udio Behind Main House':'', '***---rohnert Park':'Rohnert Park',
-    'Meadow Ridge Cir':'San Jose', 'Irvington High Area':'Fremont', 'Interlaken-watsonville':'Interlaken', 'Dimond District':'Oakland', 'Apt':'', 'Neighborhood':''}
-
-    # clean city names data:
-    df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
+    # df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
     # sanity check
-    print(f"Sanity check--after cleaning the city names, let's examine some of the cleaned data: {df.cities.value_counts().tail(10)}")
-        
-    ## convert specific cols to indicator variables -- # since there are many cols we want to transform to indicator variables, it's easier to simply drop the few cols that comprise str (aka, object) data 
-    cols_to_indicators = df.drop(columns =['ids', 'listing_urls', 'cities', 'attr_vars', 'listing_descrip', 'sqft', 'prices', 'bedrooms', 'bathrooms', 'date_posted', 'date_of_webcrawler']) 
-    cols_to_indicators_lis = list(cols_to_indicators.columns)   # convert col names to list
-    df = transform_cols_to_indicators(df, cols_to_indicators_lis) # transform the cols to uint8 
+    print(f"Sanity check--after cleaning the city names, let's examine some of the cleaned data:\n{df.cities.value_counts().tail(10)}")
 
-    # also, transform kitchen, flat and land  cols separately, since they tend to otherwise convert to float after importing from csv files:
-    cols_to_indicators2 = list(df[['kitchen', 'flat', 'land']].columns)   # get list of these 3 cols
-    df = transform_cols_to_indicators(df, cols_to_indicators2)   # transform the cols to uint8 
 
-    ## convert specific cols to integer data type:
-    # specify a list of cols to convert to integer
-    cols_to_int = df[['prices', 'bedrooms', 'ids', 'sqft']]
-    cols_to_int_lis = list(cols_to_int.columns)  # use a list of col names
-    df = transform_cols_to_int(df, cols_to_int_lis)   # convert list of cols to int 
-
-    ## clean bathrooms data by replacing the 'split' and 'shared' string values:
-    df['bathrooms'] = transform_shared_and_split_to_ones(df, 'bathrooms')
-    #sanity check
-    print(f"Sanity check on bathrooms data:\n{df['bathrooms'].value_counts()}")
-
-    # replace any ambiguous values for bathrooms data--such as '9+' with empty strings (ie, essentially nulls) 
-    df['bathrooms']  = replace_ambiguous_data_with_empty_str(df, 'bathrooms')
-    # sanity check
-    print(f"New value counts for bathrooms data--having cleaned ambiguous records: \n{df['bathrooms'].value_counts()}")
-
-    ## remove any bathroom or bedroom nulls:
-    df = remove_bedroom_and_br_nulls(df)
-    # sanity check
-    print(f"\nRemaining bedroom & bathroom nulls: \n{df[['bedrooms', 'bathrooms']].isnull().sum()}\n\n")
-
-    ## transform bathrooms data & listing ids to float--Why float?: Because some listings specify half bathrooms--e.g., 1.5 denotes one-and-half bathrooms. Re: ids, integer data type not store the entire id value due to maximum (byte) storage constraints. 
-    # convert bathrooms data to float:
-    df['bathrooms'] = transform_cols_to_float(df, 'bathrooms')    
-    # convert ids to float:
-    df['ids'] = transform_cols_to_float(df, 'ids')    
-    #sanity check
-    print(f"\nSanity check on data type of ids & bathrooms data: {df[['bathrooms', 'ids']].info()}\n\n")
-
-    ## deduplicate based on listing ids--ie, since each rental listing has unique ids
-    df = deduplicate_df(df)
-    # sanity check
-    clist_duplicate_ids_check = df[df.duplicated("ids", keep= False)] 
-    print(f"There should be no remaining duplicate listing ids (ie, 0 rows): \n{clist_duplicate_ids_check.shape[0]}") # sanity check --check that number of duplicate rows is false (ie, wrt duplicate listing ids)
-    clist_duplicate_ids_check = []  # free memory
 
     ## Remove a few columns that are irrelevant to rental price and in which we do not want to store in the SQL table:
     # remove 'Unnamed' columns, which might be imported errouneously via pd.read_csv()
@@ -703,14 +992,125 @@ def main():
     # remove listing_descrip col since we do not want to store these data in SQL table either;
     df = remove_col_with_given_starting_name(df, 'listing_descrip')
 
+    
+    ## convert specific cols to indicator variables -- # since there are many cols we want to transform to indicator variables, it's easier to simply drop the few cols that comprise str (aka, object) data 
+    cols_to_indicators = df.drop(columns =['ids', 'cities', 'attr_vars', 'sqft', 'prices', 'bedrooms', 'bathrooms', 'date_posted', 'date_of_webcrawler']) 
+    cols_to_indicators_lis = list(cols_to_indicators.columns)   # convert col names to list
+    df = transform_cols_to_indicators(df, cols_to_indicators_lis) # transform the cols to uint8 
+
+    cols_to_indicators = [] # free memory
+
+    # also, transform kitchen, flat and land  cols separately, since they tend to otherwise convert to float after importing from csv files:
+    cols_to_indicators2 = list(df[['kitchen', 'flat', 'land']].columns)   # get list of these 3 cols
+    df = transform_cols_to_indicators(df, cols_to_indicators2)   # transform the cols to uint8 
+
+    cols_to_indicators2 = []
+
+    ## convert specific cols to integer data type:
+    # specify a list of cols to convert to integer
+    cols_to_int = df[['prices', 'bedrooms', 'ids', 'sqft']]
+    # cols_to_int = df[['prices', 'bedrooms', 'sqft']]
+    cols_to_int_lis = list(cols_to_int.columns)  # use a list of col names
+    df = transform_cols_to_int(df, cols_to_int_lis)   # convert list of cols to int 
+
+    cols_to_int = [] # free memmory
+
+    print(f"\n\nSanity check on bathrooms data, **before** addit'l data cleaning:\n{df['bathrooms'].value_counts()}\n\n")
+
+
+
+    ## clean bathrooms data by replacing the 'split' and 'shared' string values:
+    df['bathrooms'] = transform_shared_and_split_to_ones(df, 'bathrooms')
+    # sanity check
+
+    # replace any ambiguous values for bathrooms data--such as '9+' with empty strings (ie, essentially nulls) 
+    df['bathrooms']  = replace_ambiguous_data_with_empty_str(df, 'bathrooms')
+
+
+    print(f"\n\nSanity check on bathrooms data, **after** addit'l data cleaning:\n{df['bathrooms'].value_counts()}\n\n")
+
+
+    # remove null ids, city names, & bathrooms data, given some data cleaning might have resulted in additional null rows:
+    more_cols_to_remove_nulls = df[['ids', 'bathrooms', 'cities']]
+    more_cols_to_remove_nulls_lis = list(more_cols_to_remove_nulls.columns)  # use a list of col names
+
+    df = remove_nulls_list(df, more_cols_to_remove_nulls_lis) 
+    # sanity check
+    print(f"\nRemaining ids & bathroom data nulls: \n{df[['ids', 'bathrooms']].isnull().sum()}\n\n")
+
+
+    # ## remove any bathroom or bedroom nulls:
+    # df = remove_bedroom_and_br_nulls(df)
+    # # sanity check
+
+    # # ## transform bathrooms data & listing ids to float--Why float?: Because some listings specify half bathrooms--e.g., 1.5 denotes one-and-half bathrooms. Re: ids, integer data type not store the entire id value due to maximum (byte) storage constraints. 
+    # # remove any whitespace
+    # df['bedrooms'] = df['bedrooms'].apply()
+    
+    # # convert bathrooms data to float:
+    df['bathrooms'] = transform_cols_to_float(df, 'bathrooms')    
+    # # # convert ids to float:
+    # df['ids'] = transform_cols_to_float(df, 'ids')
+
+    # round bathrooms data to nearest decimal point:
+    df['bathrooms'] = round_to_nearest_decimal_pt(df, 'bathrooms')
+
+    # remove any remaining ids & bathrooms data nulls, due to problems converting to float:
+    df = remove_nulls_list(df, more_cols_to_remove_nulls_lis)   
+
+
+    #sanity check
+    print(f"\nSanity check on ids value counts:\n{df['ids'].value_counts()}\n\n")
+    print(f"\nSanity check on bathrooms  data value counts:\n{df[ 'bathrooms'].value_counts()}\n\n")
+
+
+
     # sanity check
     print(f"Sanity check--The remaining columns in the dataset are:\n {df.columns}")
+    print(f"And the remaining data are:{df}")
+
+    ## run de-duplication proces once more, having transformed the data to float: 
+    df = deduplicate_df(df)
+    # sanity check
+    clist_duplicate_ids_check = df[df.duplicated("ids", keep= False)] 
+    print(f"\n\nThere should be no remaining duplicate listing ids (ie, 0 rows):\n{clist_duplicate_ids_check.shape[0]}\n") # sanity check --check that number of duplicate rows is false (ie, wrt duplicate listing ids)
+
+
+
+
+    ##   Export cleaned data to investigate the apparently weird datetime data!!
+    datetime_now = datetime.datetime.now()
+    # wrangle this date to be in mm_dd_YYYY format, to match the scraped data CSV naming convention:
+    datetime_now = datetime_now.strftime("%m_%d_%Y")
+
+    # sanity check on data type for each col:
+    print(f"Data types and number of rows for cleaned dataset:\n{df}")
+    print(f"Data type of date_posted:\n{df['date_posted'].dtype}")
+
+    # show oldest and newest date_posted dates in cleaned data, by sorting the values:
+    df = df.sort_values(by='date_posted')
+    print(f"Newest and oldest date_posted dates for cleaned data:\n{df['date_posted']}")
+
+
+    # # check a listing id that is supposedly a duplicate:
+    # df_apparent_duplicate_list_id = df.loc[df['ids'] == 7507885933] 
+    # print(f"\n\n\nProblematic duplicate listing id row?:{df_apparent_duplicate_list_id[['ids', 'date_posted', 'bathrooms']]}\n\n")
+
+
+
+
+    df.to_csv(f"cleaned_data_to_investigate_datetime_data_and_alleged_datetime2_issues_{datetime_now}.csv", index=False)
+
 
     # NB: after completing all above data filtering and cleaning procedures, proceed to step #5: ie, 5) insert filtered and cleaned pandas' df into SQL rental table
-    ## 5.) Pandas df to SQL data pipeline--ie, INSERT the filtered data (*ie, unique data that has not been inserted yet)   
+    ## 5.) Pandas df to SQL data pipeline--ie, INSERT the filtered data (*ie, unique data that has not been inserted yet) 
 
+    df = deduplicate_df(df)
+    
     #  Execute data pipeline--Ingest data from date-filtered pandas' dataframe to SQL server--data pipeline: 
-    SQL_db.insert_df_to_SQL_ETL(df)
+    SQL_db.insert_df_to_SQL_ETL(df, region_code)
+
+
 
 
 if __name__=="__main__":
