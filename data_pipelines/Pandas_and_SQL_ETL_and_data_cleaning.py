@@ -582,7 +582,7 @@ def remove_dashes_from_words_in_col(df, col):
     return df[col].str.replace('-', ' ', regex=True)
 
 
-def capitlize_each_word_in_row_for_col(df, col):
+def capitalize_each_word_in_row_for_col(df, col):
     return df[col].str.title()
 
 
@@ -973,7 +973,7 @@ def main():
     df['cities'] = remove_dashes_from_words_in_col(df, 'cities')
     
 
-    df['cities'] = capitlize_each_word_in_row_for_col(df, 'cities')
+    df['cities'] = capitalize_each_word_in_row_for_col(df, 'cities')
 
 
     # df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
