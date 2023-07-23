@@ -132,36 +132,30 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
         # transform the data to be in a "%M-%d-%Y" format, ton match the file naming structure (ie, the underscores and month, then day, then year format are important to filter the files properly):
         start_date = latest_date_from_query.strftime("%m-%d-%Y") # reformat datetime format to match the date_of_file format
 
-        # # # get current datetime, which will serve as our end-date filter, since the latest stored scraped data should highly likely be no more recent than when this script was run 
-        datetime_now = datetime.datetime.now()
-        # # wrangle this date to be in mm_dd_YYYY format:
-        # # end_date = datetime.datetime('01-15-2023').strftime("%m-%d-%Y")
-        # # end_date = '01-15-2023'
+        # get date of today (ie, use .today() method to just extract the month, day, and year, not time components such as hours, minutes, etc.)
+        # date_now = datetime.datetime.now()
+        date_now = datetime.date.today()
 
-        end_date = datetime.datetime.strptime(str(datetime_now),
-                                              '%m-%d-%Y') 
-        
+        # convert %M month format to %m month format
+        end_date = datetime.datetime.strptime(str(date_now), "%Y-%m-%d").date().strftime("%m-%d-%Y")
+             
 
         # sanity check on dates to be used to filter to the daterange
         print(f'Start date for file filter:\n{start_date}')
 
         print(f'End date for file filter:\n{end_date}\n')
 
-        print(f'Data type of end_date filter object:\n{type(end_date)}')
-
-
         ## ## Apply  the daterange filter, so we get only the CSV files that are more recent than the data stored in the SQL tables:
-        # file_date_slice =  df[df['date_of_file'].between(start_date, end_date)]
-
+        # specify the mask for filtering
         datetime_mask = (df['date_of_file'] > start_date) & (df['date_of_file'] <= end_date)
+        # apply the filter
         file_date_slice = df.loc[datetime_mask]
 
-        # having applied the filter, just grab the CSV file paths, and convert to pf.ist
+        # having applied the filter, just grab the CSV file paths and convert to list
         file_filtered_dates_list =  file_date_slice['files'].tolist()
 
         # briefly, look up the total number of CSV files of scraped data after applying the date range filter: 
         print(f"\n**After filtering:\nNumber of all recursively found CSV files:\n{len(file_filtered_dates_list)}\n")
-
 
         ## Finally, import the CSV files based on the date-filtered CSV files list, then concat to a single df
         dfs = [pd.read_csv(file_path) for file_path in file_filtered_dates_list]  # import the filtered CSV files
@@ -426,10 +420,16 @@ def transform_cols_to_datetime(df: DataFrame, col_to_convert:str):
 def transform_cols_to_datetime_specific_format(df: DataFrame, col_to_convert:str, datetime_format):
     """Transform relevant column(s) to datetime using pd.to_datetime() method.
     Specify date format via .strftime() method. We need to chain pd.to_datetime() to another pd.to_datetime() so we can convert the object result
-    from .strftime to datetime!"""
+    from .strftime to datetime!
+    Use errors = 'coerce' and utc=True arguments to ensure to_datetime() will work
+    even if a given row does not contain datetime-like values.
+    After running the first to_datetime(), we need to drop any remaining null values, before inserting into the SQL database)"""
     # return datetime format to the nearest hour and minute
-    return pd.to_datetime(pd.to_datetime(df[col_to_convert]).dt.strftime(datetime_format))
+    df[col_to_convert] =  pd.to_datetime(df[col_to_convert], errors='coerce', utc=True)
+    # remove any resulting null date_posted (ie 'NAT') rows
+    df = df.dropna(subset = [col_to_convert])
 
+    return pd.to_datetime(pd.to_datetime(df[col_to_convert]).dt.strftime(datetime_format))
 
 
 
@@ -469,9 +469,25 @@ def obtain_cities_from_wiki_sfbay(webpage_url,list_of_cities):
     # access webpage
     driver.get(webpage_url)
 
+    # specify xpath to wiki table containing the city names data:
     xpaths_table = '//table[@class="wikitable plainrowheaders sortable jquery-tablesorter"]'
 
-    # search for wiki data tables:
+    # specify max number of seconds to wait for given HTML element to load, before specifying TimeoutException
+    download_delay = 20
+
+
+    # wait until the webpage's "searchform" form tag has been loaded, or up to a maximum 20 seconds (ie, given the value of self.download_delay)
+    try: # wait until the form tag with ID of "searchform"--ie, the Craigslist page given our search results--has been loaded, or up to a maximum of 30 seconds (given download_delay)
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, xpaths_table))
+        )  # NB: you need to use a tuple as the argument of the selenium EC.presence_of_element_located() function, hence the double-parantheses
+        print('\nPage has loaded, and we can start scraping the data.\n')
+    except TimeoutException:
+        # Return error message if loading the webpage takes longer than the maximum n seconds
+        print(f"\nLoading the webpage's searchform element timed out: ie, it took longer than the maximum number of {download_delay} seconds.\n")
+
+
+    # having waited for page element to load, grab the wiki data tables from webpage:
     table = driver.find_element(By.XPATH, xpaths_table)
 
 
@@ -504,9 +520,23 @@ def obtain_cities_from_wiki_sc(webpage_url,list_of_cities):
     # access webpage
     driver.get(webpage_url)
 
-
-    # NB!: there are 2 tables with the same class name; only select data from the 2nd one
+    # specify xpath for the corresponding wiki data tables--NB!: there are 2 tables with the same class name; only select data from the 2nd one
     xpaths_table = '//table[@class="wikitable sortable jquery-tablesorter"][2]//tr//td[2]'  # 2nd table on webpage with this class name
+
+    # specify max number of seconds to wait for given HTML element to load, before specifying TimeoutException
+    download_delay = 20
+
+
+    # wait until the webpage's "searchform" form tag has been loaded, or up to a maximum 20 seconds (ie, given the value of self.download_delay)
+    try: # wait until the form tag with ID of "searchform"--ie, the Craigslist page given our search results--has been loaded, or up to a maximum of 30 seconds (given download_delay)
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, xpaths_table))
+        )  # NB: you need to use a tuple as the argument of the selenium EC.presence_of_element_located() function, hence the double-parantheses
+        print('\nPage has loaded, and we can start scraping the data.\n')
+    except TimeoutException:
+        # Return error message if loading the webpage takes longer than the maximum n seconds
+        print(f"\nLoading the webpage's searchform element timed out: ie, it took longer than the maximum number of {download_delay} seconds.\n")
+
 
 
     # search for given wiki data tables:
@@ -542,7 +572,10 @@ def add_dash_delimiter_in_bw_each_word_of_city_names(city_names:list):
 
 # clean city names by matching scraped craigslist data to that of the wikipedia table data:
 def parse_city_names_from_listing_URL(df, unique_city_names_dash_delim:list):
-    """ 1) Use str.contains() method chained to a .join() method in which we perform an 'OR' boolean via
+    """ First, check whether a given listing is of the newer variety--since January 
+    2023--and if so, 
+    
+    1) Use str.contains() method chained to a .join() method in which we perform an 'OR' boolean via
     the pipe (ie, '|' operator--ie, so we can search for multiple substrings (ie, each element 
     from the list arg) to look up any matching instances of city names
     from the unique_city_names... list 
@@ -551,31 +584,58 @@ def parse_city_names_from_listing_URL(df, unique_city_names_dash_delim:list):
     2) Then, parse each such first city name by taking the first matched city name only,
 
     3) Use these parsed city name values to **replace** the values for the 'cities' column!"""
-    ## apply lower-case for the list of SF Bay + SC county names:
+    
+    ## Transform all city name strings to lower-case:
+    # apply lower-case for the list of SF Bay + SC county names:
     unique_city_names_dash_delim  = [el.lower() for el in unique_city_names_dash_delim]
-    
-    # step 1: use str.split() on '/apa/d' and get the 2nd element after performing the split:
-    df['listing_urls_for_str_match'] = df['listing_urls'].str.split('/apa/d/').str[1]  # obtain the 2nd resulting element
-    
-    ## 2a) First!!: convert all string elements in col to lower-case for sake of consistency, ie w/ respect to list of city names
-    df['listing_urls_for_str_match'] = df['listing_urls_for_str_match'].str.lower()  # apply lowercase to all characters of each row's string vals 
-    
-    #step 3: match a substring from this newly-parsed column-- ie, 'listing_urls_for_str_match'
-    # -- to matching substrings from the  sfbay_city_names list:
-    # How?: use str.contains() and join pipe operators to each element of the list to perform an essentially  boolean "OR" str.contains() search for any matching city names
 
-    # pipe operator
+    ## convert each element in the referencing columns to lower-case for sake of consistency, ie w/ respect to list of city names
+    # listing urls
+    df['listing_urls'] = df['listing_urls'].str.lower()  # apply lowercase to all characters of each row's string vals 
+    # city names col
+    df['cities'] = df['cities'].str.lower()  # apply lowercase to all characters of each row's string vals 
+
+    # specify pipe operator, which we can use as a Boolean "OR" operator for the str.contains() method
     pipe_operator = '|'
+
+    # URL substring path to look up whether the URL contains the listing's city name
+    url_path_with_city_names = '/apa/d'
 
     # specify a regex pattern for a str.extract() method--NB: we need to wrap the pattern within a sort of tuple by using parentheses in strings--ie, '( )', so like the following format: '( regex_pattern...)'
     unique_city_names_dash_delim_pattern = '(' + pipe_operator.join(unique_city_names_dash_delim)+')'  # wrap the city names regex pattern within a 'string' tuple: ie, '(...)'
 
-    # replace cities with matching city names wrt listing_urls_for_str_match col from regex pattern (ie, derived from list of names), using str.extract() 
-    df['cities'] = df['listing_urls_for_str_match'].str.extract(unique_city_names_dash_delim_pattern, expand=False)
-    # sanity check
-    print(df['cities'])
 
-    return df
+
+    # if statement to check whether given listing (ie, row of df) contains '/apa/d' in the listing's URL path (else just '/apa')
+    for row in df['listing_urls']:
+        # extract city names in reference to the (newer) listing URLs (given the '.../apa/d' in URL path)
+        if url_path_with_city_names in row:
+
+        # NB: alternative approach using str.contains() and .any()    
+        # if df['listing_urls'].str.contains(url_path_containing_city_names,regex=False).any():
+
+            # # step 1: use str.split() on '/apa/d' and get the 2nd element after performing the split:
+            # df['listing_urls_for_str_match'] = df['listing_urls'].str.split('/apa/d/').str[1]  # obtain the 2nd resulting element
+            
+
+            #step 3: match a substring from this newly-parsed column-- ie, 'listing_urls_for_str_match'
+            # -- to matching substrings from the  sfbay_city_names list:
+            # How?: use str.contains() and join pipe operators to each element of the list to perform an essentially  boolean "OR" str.contains() search for any matching city names
+
+
+    
+            # replace cities with matching city names wrt listing_urls_for_str_match col from regex pattern (ie, derived from list of names), using str.extract() 
+            df['cities'] = df['listing_urls'].str.extract(unique_city_names_dash_delim_pattern, expand=False)
+            # sanity check
+            print(df['cities'])
+
+        else:  #ie, older listings in which rental listings do not contain city names--as indicated by just 'apa' instead of 'apa/d' in the listing URL path 
+
+
+            # replace cities with matching city names wrt listing_urls_for_str_match col from regex pattern (ie, derived from list of names), using str.extract() 
+            df['cities'] = df['cities'].str.extract(unique_city_names_dash_delim_pattern, expand=False)
+
+        return df
 
 
 def remove_dashes_from_words_in_col(df, col):
@@ -845,13 +905,8 @@ def main():
     print(f"\n\ndata_posted col values **before** doing data cleaning:\n{df['date_posted']}\n")
 
 
-    # # specify SQL-friendly datetime format that we need to use:
-    # datetime_for_sql = "%Y-%m-%d %H:%M:%S"
-    
-
 
     # # NB:Convert the 2 relevant columns to datetime data type, referring to the initial datetime format:
-
 
     # clean date_posted data--remove trailing '-0700' char (if exists)-- before converting to datetime:
     df['date_posted'] == clean_date_posted_data(df)
@@ -874,8 +929,6 @@ def main():
     print(f"Sanity check to ensure the columns have been successfully converted to datetime:\n{df[['date_posted', 'date_of_webcrawler']].info()}")
 
 
-    print(f"Sanity check on datetime col data type: {df['date_posted'].dtype}\n")
-
 
 
     ## 3b) Filter df by datetime with respect to date_posted--based on the results from the SQL table query date (NB: this is separate from the datetime mask we applied earlier to filter the CSV files, which was based on the date_of_webcrawler values of the suffix of the file names...):
@@ -883,11 +936,9 @@ def main():
 
 
     # sanity check
-    print(f"\n\nSanity check: Ensure the data have been filtered properly to be newer than the latest date stored in the SQL table:\n{df[['date_posted', 'prices']].sort_values(by='date_posted')}")
-
-
-    print(f"**After applying date_posted filter from MAX() sql query,\nsanity check on filtered datetime col values: {df['date_posted']}\n")
-
+    print(f"\n\nSanity check: Ensure the data have been filtered properly to be newer than the latest date stored in the SQL table:\n")
+    # show oldest and newest date_posted dates in cleaned data, by sorting the values:
+    print(f"Newest and oldest date_posted dates for cleaned data:\nNewest: {df['date_posted'].max()}\Oldest: {df['date_posted'].min()}")
 
 
     ## remove any rows with null listing ids, prices, sqft, or city names   
@@ -896,20 +947,13 @@ def main():
 
     df = remove_nulls_list(df, list_cols_to_remove_nulls)
 
-
     # sanity check
     print(f"Remaining price, city name, sqft, kitchen, & listing id nulls: \n{df[list_cols_to_remove_nulls].isnull().sum()}")
 
 
-
-
-
     ## 4.) Additional data cleaning, wrangling, & data type transformations:
 
-
-
     ## Clean city names data
-
 
     # clean city names data:
     # NB: run a wikipedia table webcrawler to get a list of all possible SF Bay city names:
@@ -943,11 +987,15 @@ def main():
     obtain_cities_from_wiki_sc(sc_county_cities_wiki_url, sc_county_city_names)
 
 
-    #  # clean data by removing extraneous '†' char from city names list
+    #  # clean data by removing extraneous '†' char from city names lists
     sc_county_city_names = list(map(lambda x: x.replace('†',''), sc_county_city_names))
+    sfbay_city_names = list(map(lambda x: x.replace('†',''), sfbay_city_names))
 
-    ## finally, remove any whitespace from list-- use list comprehension
+
+    ## finally, remove any whitespace from lists-- use list comprehension
     sc_county_city_names = [s for s in sc_county_city_names if s.strip()]
+    sfbay_city_names = [s for s in sfbay_city_names if s.strip()]
+
 
     # sanity check
     print(f'\n\nsc county city names:{sc_county_city_names}')
@@ -1030,13 +1078,11 @@ def main():
     print(f"\n\nSanity check on bathrooms data, **after** addit'l data cleaning:\n{df['bathrooms'].value_counts()}\n\n")
 
 
-    # remove null ids, city names, & bathrooms data, given some data cleaning might have resulted in additional null rows:
-    more_cols_to_remove_nulls = df[['ids', 'bathrooms', 'cities']]
-    more_cols_to_remove_nulls_lis = list(more_cols_to_remove_nulls.columns)  # use a list of col names
-
-    df = remove_nulls_list(df, more_cols_to_remove_nulls_lis) 
+    # remove null ids, city names, & bathrooms data, etc, given some data cleaning might have resulted in additional null rows:
+    df = remove_nulls_list(df, list_cols_to_remove_nulls) 
     # sanity check
     print(f"\nRemaining ids & bathroom data nulls: \n{df[['ids', 'bathrooms']].isnull().sum()}\n\n")
+    print(f"Dataset after most data cleaning:\n{df.info()}")
 
 
     # ## remove any bathroom or bedroom nulls:
@@ -1049,14 +1095,14 @@ def main():
     
     # # convert bathrooms data to float:
     df['bathrooms'] = transform_cols_to_float(df, 'bathrooms')    
-    # # # convert ids to float:
-    # df['ids'] = transform_cols_to_float(df, 'ids')
+    # # sanity check on bathrooms data
+    print(f"Bathrooms data:\n{df['bathrooms']}")
 
     # round bathrooms data to nearest decimal point:
     df['bathrooms'] = round_to_nearest_decimal_pt(df, 'bathrooms')
 
-    # remove any remaining ids & bathrooms data nulls, due to problems converting to float:
-    df = remove_nulls_list(df, more_cols_to_remove_nulls_lis)   
+    # # remove any remaining ids & bathrooms data nulls, due to problems converting to float:
+    # df = remove_nulls_list(df, more_cols_to_remove_nulls_lis)   
 
 
     #sanity check
@@ -1069,37 +1115,12 @@ def main():
     print(f"Sanity check--The remaining columns in the dataset are:\n {df.columns}")
     print(f"And the remaining data are:{df}")
 
-    ## run de-duplication proces once more, having transformed the data to float: 
-    df = deduplicate_df(df)
+    # ## run de-duplication proces once more, having transformed the data to float: 
+    # df = deduplicate_df(df)
+
     # sanity check
     clist_duplicate_ids_check = df[df.duplicated("ids", keep= False)] 
     print(f"\n\nThere should be no remaining duplicate listing ids (ie, 0 rows):\n{clist_duplicate_ids_check.shape[0]}\n") # sanity check --check that number of duplicate rows is false (ie, wrt duplicate listing ids)
-
-
-
-
-    ##   Export cleaned data to investigate the apparently weird datetime data!!
-    datetime_now = datetime.datetime.now()
-    # wrangle this date to be in mm_dd_YYYY format, to match the scraped data CSV naming convention:
-    datetime_now = datetime_now.strftime("%m_%d_%Y")
-
-    # sanity check on data type for each col:
-    print(f"Data types and number of rows for cleaned dataset:\n{df}")
-    print(f"Data type of date_posted:\n{df['date_posted'].dtype}")
-
-    # show oldest and newest date_posted dates in cleaned data, by sorting the values:
-    df = df.sort_values(by='date_posted')
-    print(f"Newest and oldest date_posted dates for cleaned data:\n{df['date_posted']}")
-
-
-    # # check a listing id that is supposedly a duplicate:
-    # df_apparent_duplicate_list_id = df.loc[df['ids'] == 7507885933] 
-    # print(f"\n\n\nProblematic duplicate listing id row?:{df_apparent_duplicate_list_id[['ids', 'date_posted', 'bathrooms']]}\n\n")
-
-
-
-
-    df.to_csv(f"cleaned_data_to_investigate_datetime_data_and_alleged_datetime2_issues_{datetime_now}.csv", index=False)
 
 
     # NB: after completing all above data filtering and cleaning procedures, proceed to step #5: ie, 5) insert filtered and cleaned pandas' df into SQL rental table
