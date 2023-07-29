@@ -18,7 +18,6 @@ import inquirer
 
 #web crawling, web scraping & webdriver libraries and modules
 from selenium import webdriver  # NB: this is the main module we will use to implement the webcrawler and webscraping. A webdriver is an automated browser.
-from webdriver_manager.chrome import ChromeDriverManager # import webdriver_manager package to automatically take care of any needed updates to Chrome webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -464,7 +463,7 @@ def remove_nulls_list(df, list_of_cols):
 def obtain_cities_from_wiki_sfbay(webpage_url,list_of_cities):
     # initialize web driver
             
-    driver = webdriver.Chrome(ChromeDriverManager().install())  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+    driver = webdriver.Chrome()  # install or update latest Chrome webdriver using using ChromeDriverManager() library
     
     # access webpage
     driver.get(webpage_url)
@@ -515,7 +514,7 @@ def obtain_cities_from_wiki_sfbay(webpage_url,list_of_cities):
 def obtain_cities_from_wiki_sc(webpage_url,list_of_cities):
     # initialize web driver
             
-    driver = webdriver.Chrome(ChromeDriverManager().install())  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+    driver = webdriver.Chrome()  # install or update latest Chrome webdriver using using ChromeDriverManager() library
     
     # access webpage
     driver.get(webpage_url)
