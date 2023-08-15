@@ -88,44 +88,57 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
     Then, import all CSV files to a single Pandas' df using pd.concat(). Only apply filter if the SQL table
     contains at least some data for given region."""
 
-    # Only apply this filter if the SQL table already contains at least some data for given region
-    if latest_date_from_query != "None":  # the SQL table contains at least some data for given region
-        # get path for scraped data pertaining to the given region:
-        path = os.path.join(parent_direc, region_code) 
-
-        print(f"Path to scraped data for {region_code} region:\n{path}") 
-
-        # specify datetime format used for the scraped_data CSV files 
-        datetime_format_scraped_data = "%m_%d_%Y"
-
-        # initialize list to contain all scraped data file names 
-        files_list = []
-
-        # recursively iterate over parent directory and all of its subdirectories, to get paths to all CSV files
-        for dirs, subdirs, files in os.walk(path):
+    # recursively search for scraped_data CSV files for given region 
 
 
-            # iterate over each file within parent directory and all subdirectories
-            for file in files:
-                
-                # only include CSV files: 
-                if file.endswith('.csv'):
-                    # grab full paths for all found CSV files--ie, join directories (dirs) with the CSV file namesn (file from files)  
-                    files_list.append(os.path.join(dirs, file))
+    # get path for scraped data pertaining to the given region:
+    path = os.path.join(parent_direc, region_code) 
+
+    print(f"Path to scraped data for {region_code} region:\n{path}") 
+
+    # specify datetime format used for the scraped_data CSV files 
+    datetime_format_scraped_data = "%m_%d_%Y"
+
+    # initialize list to contain all scraped data file names 
+    files_list = []
+
+    # recursively iterate over parent directory and all of its subdirectories, to get paths to all CSV files
+    for dirs, subdirs, files in os.walk(path):
 
 
-        # assign all CSV file paths to a DataFrame:
-        df = pd.DataFrame(files_list, columns=['files'])
+        # iterate over each file within parent directory and all subdirectories
+        for file in files:
+            
+            # only include CSV files: 
+            if file.endswith('.csv'):
+                # grab full paths for all found CSV files--ie, join directories (dirs) with the CSV file namesn (file from files)  
+                files_list.append(os.path.join(dirs, file))
 
-        print(f"\n\nSome scraped data CSV file paths:\n{df['files'].head()}\n")
-        
-        # # Parse the dates from each CSV file, and keep the same 'MM_DD_YYY' format (**including the underscore delimiters!!), as the webcrawler CSV file naming convention:
-        df['date_of_file'] = df['files'].str.extract(r'(\d{2}_\d{2}_\d{4})')
 
-        # convert col to datetime
-        df['date_of_file'] = pd.to_datetime(df['date_of_file'], format='%m_%d_%Y')
+    # assign all CSV file paths to a DataFrame:
+    df = pd.DataFrame(files_list, columns=['files'])
 
-        print(f"Scraped file data dates, before filtering:\n{df['date_of_file'].head()}")
+    print(f"\n\nSome scraped data CSV file paths:\n{df['files'].head()}\n")
+    
+    # # Parse the dates from each CSV file, and keep the same 'MM_DD_YYY' format (**including the underscore delimiters!!), as the webcrawler CSV file naming convention:
+    df['date_of_file'] = df['files'].str.extract(r'(\d{2}_\d{2}_\d{4})')
+
+    # convert col to datetime
+    df['date_of_file'] = pd.to_datetime(df['date_of_file'], format='%m_%d_%Y')
+
+    print(f"Scraped file data dates, before filtering:\n{df['date_of_file'].head()}")
+
+    # Only apply datetime filter **if** the SQL table already contains at least some data for given region--ie, the query result does not comprise a null:
+
+    # # print(f"Logic test:\n\n{latest_date_from_query['latest_date'].str.contains('None').any()}")
+    # print(f"Logic test:\n\n{latest_date_from_query.isnull()}")
+
+
+    # if latest_date_from_query != "None":  # the SQL table contains at least some data for given region
+
+    # if latest_date_from_query['latest_date'].str.contains("None").any():  # the SQL table contains at least some data for given region
+    if latest_date_from_query.isnull() is False:  # the SQL table contains at least some data for given region
+
 
         # use latest_date_from_query as the start date of our file date-filter:
         # transform the data to be in a "%M-%d-%Y" format, ton match the file naming structure (ie, the underscores and month, then day, then year format are important to filter the files properly):
@@ -137,7 +150,7 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
 
         # convert %M month format to %m month format
         end_date = datetime.datetime.strptime(str(date_now), "%Y-%m-%d").date().strftime("%m-%d-%Y")
-             
+                
 
         # sanity check on dates to be used to filter to the daterange
         print(f'Start date for file filter:\n{start_date}')
@@ -157,15 +170,19 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
         print(f"\n**After filtering:\nNumber of all recursively found CSV files:\n{len(file_filtered_dates_list)}\n")
 
         ## Finally, import the CSV files based on the date-filtered CSV files list, then concat to a single df
-        dfs = [pd.read_csv(file_path) for file_path in file_filtered_dates_list]  # import the filtered CSV files
+        list_of_dfs = [pd.read_csv(file_path) for file_path in file_filtered_dates_list]  # import the filtered CSV files
         
         # concat to a single df:
-        df = pd.concat(dfs)
+        df = pd.concat(list_of_dfs)
 
 
      # account for scenario in which *no data* has yet been inserted into the SQL table:
-    else:   # ie, latest_date_from_query == "None"
-        pass  # do not apply filter
+    else:   # do not apply datetime filter
+        # instead import all available scraped_data files for given region
+        list_of_dfs = (pd.read_csv(files) for files in files_list) 
+        
+        # concat to a single df:
+        df = pd.concat(list_of_dfs, ignore_index=True)
     
     return df
 
@@ -173,8 +190,11 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
 # 3.) b.) filter Pandas' dataframe by latest date of date_posted found via MAX( SQL query
 def filter_df_since_specified_date(df: DataFrame, latest_date_sql_str: str):
     """Filter the imported scraped dataset to all data newer than the specified date of data stored in the SQL table, which is given via the MAX(posted_date) query results."""
+    
     # only apply the filter if the SQL query indicates at least some data has been stored in the SQL table, for given region
-    if latest_date_sql_str != "None": #  a) latest_date_sql_str query result object is not literally "None" 
+
+    # if latest_date_sql_str != "None": #  a) latest_date_sql_str query result object is not literally "None" 
+    if latest_date_sql_str.isnull() is False: #  a) latest_date_sql_str query result object is not literally "None" 
 
         # define datetime mask, so we ensure we will be inserting only more recent data than what's already stored in the table
         datetime_mask = (df['date_posted'] > latest_date_sql_str)
@@ -632,10 +652,13 @@ def parse_city_names_from_listing_URL(df, unique_city_names_dash_delim:list):
 
 
             # replace cities with matching city names wrt listing_urls_for_str_match col from regex pattern (ie, derived from list of names), using str.extract() 
-            df['cities'] = df['cities'].str.extract(unique_city_names_dash_delim_pattern, expand=False)
+            df['cities'] = df['cities'].str.extract(unique_city_names_dash_delim_pattern, expand=False, regex=True)
 
         return df
 
+def clean_city_names(df, col):
+    """REmove literal 'Nan' from cities col"""
+    return df[col].str.replace('Nan', ' ', regex=True)
 
 def remove_dashes_from_words_in_col(df, col):
     return df[col].str.replace('-', ' ', regex=True)
@@ -849,7 +872,8 @@ def main():
     # leave latest_date unchanged if SQL query results indicate no data have been inserted into SQL database so far for given region
     # if latest_date.values.all()  != "None":
     if latest_date.isna().values.any():
-        pass
+        # keep latest_date_dt as assigned to "None" since no data yet exist in the SQL table
+        latest_date_dt = latest_date
         
     # only make adjustments to latest_date object if query returns a non-null value
     else:  
@@ -1013,8 +1037,11 @@ def main():
     # sanity check
     print(f"List of SF Bay city names parsed from wiki tables:{sfbay_city_names}")
 
-    # clean city names data
+    # parse city names data based on the full list of cities from the wikipedia pages
     df = parse_city_names_from_listing_URL(df, sfbay_city_names)
+
+    # clean city names (e.g., delete 'Nan' values, etc.)
+    df['cities'] = clean_city_names(df, 'cities')
 
     # remove dashes from city names col:
     df['cities'] = remove_dashes_from_words_in_col(df, 'cities')
