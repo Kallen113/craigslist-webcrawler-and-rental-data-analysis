@@ -303,22 +303,9 @@ For example, craigslist--in Jan or early February 2023--updated the HTML for its
 c) As a result, some of these unit tests should print a special message if the test(s) fail, indicating that the user needs to check whether craigslist has made any updates to the HTML on the rental listings pages.
 
 
-2) For the CSV to SQL Server data pipeline--ie, Pandas_and_SQL_ETL_and_data_cleaning.py from the data_pipelines subdirectory--update the script to more efficiently slice the CSV files (ie, that contain the scraped rental data) that are being imported at the beginning of the script. 
-
-Namely: currently, the script  recursively imports *all* available CSV scraped data files from each given region + subregion. 
-The script then uses a Python function--which I've called filter_df_since_specified_date()--that takes in the MAX() of date_posted from the SQL Server database to use as a filter to slice the datat to include only newer data that have not yet been inserted into the SQL Server table.
-
-However, I need to instead use this datetime filter--ie, based on the MAX() of date_posted from the SQL Server table--to **only* import CSV files that contain (at least some) data (NB: assume that the date of the file name is the most recent date_posted datetime) that are *more recent* than that of MAX() of date_posted from the SQL table! To do this, I might need pathlib, glob & a regex pattern to match the 'MM_DD_YYYY' naming convention with respect to the CSV file naming convention I'm using!
-
-3) For the CSV to SQL Server data pipeline, additionally revise the clean_split_city_names() function to more effectively clean the city names. Avoid using multiple regex functions & string-parsing Pandas' methods.
-
-We can achieve the data cleaning for city names both more concisely and effectively by instead matching parsed the city names from each rental listing's url to that of al possible SF Bay city names from the wikipedia tables. 
-
-More specifically: 1) Create a smaller webcrawler that extrqacts the SF Bay city names from wikipedia tables. 2) Place the city names into a list, ad 2b) add dash delimiters to each word of each city name. 3) Then, use these wikipedia table-extracted city names to match to that of the parsed--via a regex function--city names from the listing urls!
-
-NB!: Note to self: see clean_missing_cities_data_rev.ipynb notebook on my local machine for more details. 
-
-4) To further mitigate bot detection, I might want add cursor movements and scroll-downs to help mimic human-like browser activity. I could add this to the finally code block--ie, within the try...except...else...finally nested within the listing url for loop. 
+2) To avoid "out of memory" issues when running the Pandas CSV to SQL Server data pipeline, try creating a Cloud-based option for the ETL transformations and data processing, so we can avoid relying so heavily on local machine hardware and RAM constraints. 
+  
+3) To further mitigate bot detection, I might want add cursor movements and scroll-downs to help mimic human-like browser activity. I could add this to the finally code block--ie, within the try...except...else...finally nested within the listing url for loop. 
 
 
 ### Legal Info & Disclaimer:
