@@ -260,7 +260,9 @@ You might want to use Oracle SQL. Oracle SQL is compatible with the pyodbc Pytho
 
 One way to use this webcrawler and data cleaning program is for individuals who are looking for a new place to rent within a given region. For example, after running the webcrawler and data pipeline portions of the project, you can then check for the least expensive rental prices within a given city or region, or to look for rental listings that match a specific set of characteristics or amenities that you desire. With some basic knowledge of SQL, you can run queries that match the amenities you would want.
 
-Quick SQL query examples: Show the rental prices & sqft for January 2023 rental listings from San Francisco that are 1-bedroom apartments with 1 full (not half) bathroom:
+Quick SQL query examples: 
+
+#### 1) Show the rental prices & sqft for January 2023 rental listings from San Francisco that are 1-bedroom apartments with 1 full (not half) bathroom:
 
 <<<
 
@@ -272,22 +274,49 @@ AND bathrooms = 1
 AND apt =1 
 AND MONTH(date_posted) = 1
 AND YEAR(date_posted) = 2023;
+---------------------------------
 
-What are the 10 cheapest such apartments from SF for January 2023?:
+#### 2) What are the 10 cheapest such apartments from SF for August 2023?:
 
 <<<
 
 WITH rank_rental_price_apt_sf AS 
 (
-    SELECT price, DENSE_RANK() OVER(PARTITION BY city ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
+    SELECT price, listing_id, city, DENSE_RANK() OVER(PARTITION BY city ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
     AND city ='San Francisco' AND MONTH(date_posted) = 1 AND YEAR(date_posted)= 2023
 )
 
-SELECT price
-FROM rank_rental_price_apt_sf
-
 --select only 10 cheapest rental listings
+
+
+SELECT listing_id, price, price_rank
+FROM rank_rental_price_apt_sf
 WHERE price_rank <= 10;
+
+
+---------------------------------
+
+#### 3)  Are there significant differences in average rental listing prices for different months? Find the average rental prices for each month:
+
+<<<
+
+-- show if there are any significant differences in monthly average prices
+
+SELECT MONTH(date_posted) AS month_posted,
+
+-- show number of listings per month for better context
+COUNT(MONTH(date_posted)) AS monthly_listings_count,
+
+AVG(price) AS avg_price,
+
+-- rank the data by avg price per month
+
+RANK()
+OVER(ORDER by AVG(price) DESC) AS monthly_avg_price_rank
+	
+FROM rental
+GROUP BY MONTH(date_posted)
+ORDER BY MONTH(date_posted);
 
 
 ## To-Dos & Additional features to add to the webcrawler:
