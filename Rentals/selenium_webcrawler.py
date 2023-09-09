@@ -414,9 +414,9 @@ class Craigslist_Rentals(object):
         ## Data cleaning and wrangling:
         
         # remove dollar signs for rental prices data
-        df_from_dict['prices'] = df_from_dict['prices'].str.replace(
+        df_from_dict['prices'] = df_from_dict['prices'].astype(str).str.replace(
             '$', '', regex=True
-            )   
+            )    
 
         # parse specific attributes (e.g., 'cats_OK') from the attr_vars and listing_descrip cols as indicator variables:
         parse_attrs(df_from_dict) # NB: run parse_attrs() function comprising factored-out code from imported data cleaning script--ie, parse data as indicator variables for df_from_dict DataFrame
