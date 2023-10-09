@@ -49,9 +49,18 @@ class Craigslist_Rentals(object):
         self.rent_period = rent_period
         self.sale_date = sale_date
 
-        ## Create customized URL for  specify each of the above parameters --using an f-string--to enable us to make a customized search of SF Bay Area rental listings on Craigslist
-        self.url = f"https://{region}.craigslist.org/search/{subregion}/{housing_category}?/min_price={min_price}&max_price={max_price}&availabilityMode=0&rent_period={rent_period}&sale_date={sale_date}"
-        
+        # only use subregion in craigslist URL if subregion is not None
+        if subregion is not None:
+                
+            ## Create customized URL for  specify each of the above parameters --using an f-string--to enable us to make a customized search of SF Bay Area rental listings on Craigslist
+            self.url = f"https://{region}.craigslist.org/search/{subregion}/{housing_category}?/min_price={min_price}&max_price={max_price}&availabilityMode=0&rent_period={rent_period}&sale_date={sale_date}"
+
+        # account for regions with *no* subregion:
+        else:        
+            ## Create customized URL for  specify each of the above parameters --using an f-string--to enable us to make a customized search of SF Bay Area rental listings on Craigslist
+            self.url = f"https://{region}.craigslist.org/search/{housing_category}?/min_price={min_price}&max_price={max_price}&availabilityMode=0&rent_period={rent_period}&sale_date={sale_date}"
+
+            
         # sanity check and print the starting craigslist URL for the web crawler (ie, the self.url derived from this __init__() method):
         print(f"The craigslist URL we will use to perform the web crawler is:\n{self.url}")
 
@@ -416,7 +425,7 @@ class Craigslist_Rentals(object):
         # remove dollar signs for rental prices data
         df_from_dict['prices'] = df_from_dict['prices'].astype(str).str.replace(
             '$', '', regex=True
-            )    
+            )   
 
         # parse specific attributes (e.g., 'cats_OK') from the attr_vars and listing_descrip cols as indicator variables:
         parse_attrs(df_from_dict) # NB: run parse_attrs() function comprising factored-out code from imported data cleaning script--ie, parse data as indicator variables for df_from_dict DataFrame
