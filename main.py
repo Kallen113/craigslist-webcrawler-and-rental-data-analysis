@@ -21,7 +21,7 @@ from determine_subregions_for_given_clist_region.determine_subregions_for_given_
 def main():
     ## Specify the arguments we will use for each component of the Craigslist_Rentals class, so that we will scrape rental data for the given region, subregion, etc.
 
-    # specify names of metropolitan craigslist region names and their corresponding craigslist urls, store in dict
+    #specify names of regions and their corresponding craigslist urls, store in dict
     clist_region_and_urls = {
         'SF Bay Area, CA':'https://sfbay.craigslist.org/',
         'San Diego, CA':'https://sandiego.craigslist.org/',
@@ -40,7 +40,14 @@ def main():
         'Detroit, MI':'https://detroit.craigslist.org/',
         'New York City, NY':'https://newyork.craigslist.org/',
         'Vancouver, Canada':'https://vancouver.craigslist.org/',
-        'Toronto, Canada':'https://toronto.craigslist.org/'
+        'Toronto, Canada':'https://toronto.craigslist.org/',
+        'Salt Lake City, UT':'https://saltlakecity.craigslist.org/',
+        'St. George, UT':'https://stgeorge.craigslist.org/',
+        'Las Vegas, NV': 'https://lasvegas.craigslist.org/',
+        'Provo/Ogden, UT': 'https://provo.craigslist.org/',
+        'Santa Fe, NM': 'https://santafe.craigslist.org/',
+        'Maine': 'https://maine.craigslist.org/',
+        'Montreal, Quebec, Canada':'https://montreal.craigslist.org/'
         }
     
     # Prompt user for region:
@@ -52,10 +59,28 @@ def main():
     # specify region craigslist code, for webcrawler's starting URL-- parse the region_URL to craigslist region codes:
     region = parse_region_code_for_craigslist_URL_main_webcrawler(region_URL)  # use split() method to parse the region code from the region_URL of the selected region!
 
-    # Next, parse clist subregion (if needed), and prompt user to select a subregion corresponding to the selected region:
+    
 
-    # if selected region is *not* SF Bay Area, CA, we will need to parse the subregion codes for given (parent) region:
-    if region_name != 'SF Bay Area, CA': 
+    # Next, parse clist subregion (if needed):
+
+    # NB: note the following craigslist regions actually *have* subregions. which we will use as an elif condition
+    region_names_with_subregions = ['San Diego, CA', 'Chicago, IL', 'Seattle, WA', 'Los Angeles, CA', 'Phoenix, AZ', 'Portland, OR', 'Dallas/Fort Worth, TX', 'Minneapolis/St. Paul, MN', 'Boston, MA', 'Washington, D.C.', 'Atlanta, GA', 'Miami, FL', 'Hawaii (subregions by island)', 'Detroit, MI', 'New York City, NY', 'Vancouver, Canada', 'Toronto, Canada']
+
+    # parse subregion conditions--let's start w/ SF Bay region
+    if region_name == 'SF Bay Area, CA': # ie, if user selected SF Bay Area, CA region
+        print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
+        ## specify each Sf Bay subregion:
+        sfbay_subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
+        # select subregion val: ie, prompt user in terminal to select one of the subregions:
+        subregion = inquirer_prompt_user_at_terminal(sfbay_subregion_vals)  # parse the specific value the user selected  
+
+        # sanity check
+        print(f'Subregion value selected:\n{subregion}')
+
+        
+    # parse subregions for all non-SF Bay regions:
+    elif region_name in region_names_with_subregions and region_name != 'SF Bay Area, CA': # ie, if region is *not*  SF Bay Area, CA, but 
+        # run parse_subregions_via_xpath() function to parse craigslist subregion codes
 
         # specify xpath argument needed to parse the clist subregion codes for a given (parent) region 
         ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
@@ -71,20 +96,19 @@ def main():
 
         # sanity check
         print(f'Subregion selected:\n{subregion}')
+
     
-    # if user chose SF Bay Area, CA region, we can manually supply the relevant subregion codes and names:
-    else:
-        # rename SF Bay Area, CA to 
-        print_sfbay_subregion_names() # print what each sfbay craglslist subregion actually represents--ie, which regions and/or cities. 
-        ## specify each Sf Bay subregion:
-        sfbay_subregion_vals = ['eby', 'nby', 'pen', 'sby', 'scz', 'sfc'] # specify a list of all Bay Area subregions for craigslist site-- NB: craigslist lumps Santa Cruz ('scz') within their sfbay site.  
-        # select subregion val: ie, prompt user in terminal to select one of the subregions:
-        subregion = inquirer_prompt_user_at_terminal(sfbay_subregion_vals)  # parse the specific value the user selected  
-        
+
+   
+    else:  # region does not contain any subregions
+
+        # set subregion to None since no subregion exists
+        subregion = None
 
         # sanity check
-        print(f'Subregion value selected:\n{subregion}')
+        print(f'Subregion selected:\n{subregion}')
     
+
     ## Specify all other parameters for Craigslist_Rentals() class, including min & max price for searchform, etc.:
     
     ## filter housing category to 'apa'-ie, rental listings (apartments & housing for rent)
@@ -114,20 +138,20 @@ def main():
         '//a[@class="result-title hdrlnk"]',
         '//a[@class="cl-app-anchor text-only posting-title"]'
         ]
-    
     # argument #1 finalized: concatenate each element in list with pipe operators separating each:
     xpaths_listing_urls = pipe_operator.join([f'{el}' for el in list_of_xpaths_listing_urls]) 
     
-    # 2nd argument of obtain_listing_urls() method: specify the xpaths for the 'next' page button widget we need to click to navigate to each subsequent page: 
-    # NB: specify all known possible xpaths for the next page buttons (prior to final page) to a list
-    list_of_xpaths_next_page_button = [
-        '//*[@class="bd-button cl-next-page icon-only"]',
-        '//*[@id="search-toolbars-1"]/div[2]/button[3]', 
-        '//*[@class="button next"]'
-        ]
-    # argument #2 finalized: concatenate each element in list with pipe operators separating each:
-    next_page_button_xpaths = pipe_operator.join([f'{el}' for el in list_of_xpaths_next_page_button]) 
+    # # 2nd argument of obtain_listing_urls() method: specify the xpaths for the 'next' page button widget we need to click to navigate to each subsequent page: 
+    # # NB: specify all known possible xpaths for the next page buttons (prior to final page) to a list
+    # list_of_xpaths_next_page_button = [
+    #     '//*[@class="bd-button cl-next-page icon-only"]',
+    #     '//*[@id="search-toolbars-1"]/div[2]/button[3]', 
+    #     '//*[@class="button next"]'
+    #     ]
+    # # argument #2 finalized: concatenate each element in list with pipe operators separating each:
+    # next_page_button_xpaths = pipe_operator.join([f'{el}' for el in list_of_xpaths_next_page_button]) 
     
+    next_page_button_xpaths = '//*[@class="bd-button cl-next-page icon-only"]'
     
     # implement obtain_listing_urls() method to initiate webcrawler:
     listing_urls = craigslist_crawler.obtain_listing_urls(xpaths_listing_urls, next_page_button_xpaths)  # method requires 2 arguments: xpaths to rental listing URLs on given page, and xpaths to the next page button widgets
