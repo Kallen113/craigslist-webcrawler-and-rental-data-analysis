@@ -276,17 +276,17 @@ AND MONTH(date_posted) = 1
 AND YEAR(date_posted) = 2023;
 ---------------------------------
 
-#### 2) What are the 10 cheapest such apartments from SF for August 2023?:
+#### 2) What are the 10 cheapest such apartments from SF for November 2023?:
 
 <<<
 
 WITH rank_rental_price_apt_sf AS 
 (
     SELECT price, listing_id, city, DENSE_RANK() OVER(PARTITION BY city ORDER BY price ASC) AS price_rank FROM rental WHERE apt=1 
-    AND city ='San Francisco' AND MONTH(date_posted) = 1 AND YEAR(date_posted)= 2023
+    AND city ='San Francisco' AND MONTH(date_posted) = 11 AND YEAR(date_posted)= 2023
 )
 
---select only 10 cheapest rental listings
+--select only the 10 cheapest rental listings
 
 
 SELECT listing_id, price, price_rank
