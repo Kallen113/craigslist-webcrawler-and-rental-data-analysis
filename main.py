@@ -44,12 +44,21 @@ def main():
         'Salt Lake City, UT':'https://saltlakecity.craigslist.org/',
         'St. George, UT':'https://stgeorge.craigslist.org/',
         'Las Vegas, NV': 'https://lasvegas.craigslist.org/',
-        'Provo/Ogden, UT': 'https://provo.craigslist.org/',
+        'Provo/Orem, UT': 'https://provo.craigslist.org/',
+        'Logan, UT':'https://logan.craigslist.org/',
+        'Ogden, UT':'https://ogden.craigslist.org/',
         'Santa Fe, NM': 'https://santafe.craigslist.org/',
         'Maine': 'https://maine.craigslist.org/',
         'Indianapolis, IN': 'https://indianapolis.craigslist.org/',
         'Elko, NV': 'https://elko.craigslist.org/',
         'Anchorage, AK':'https://anchorage.craigslist.org/',
+        'New Hampshire (entire state)':'https://nh.craigslist.org/',
+        'Albuquerque, NM':'https://albuquerque.craigslist.org/',
+        'Las Cruces, NM':'https://lascruces.craigslist.org/',
+
+
+        
+        'Reno, NV': 'https://reno.craigslist.org/',
 
         'Salem, OR': 'https://salem.craigslist.org/',
         'Bend, OR': 'bend.craigslist.org',
@@ -61,6 +70,8 @@ def main():
         'Western MAssachusetts':'https://westernmass.craigslist.org/',
         'Buffalo, NY':'https://buffalo.craigslist.org/',
         'Baltimore, MD':'https://baltimore.craigslist.org/',
+        'Annapolis, MD':'https://annapolis.craigslist.org/',
+
         'Nashville, TN':'https://nashville.craigslist.org/',
         'Charleston, SC':'https://charleston.craigslist.org/',
         'Ames, IA': 'https://ames.craigslist.org/',
@@ -76,22 +87,28 @@ def main():
         'Boise, ID':'https://boise.craigslist.org/',
         'Madison, WI':'https://madison.craigslist.org/',
         'Milwaukee, WI':'https://milwaukee.craigslist.org/',
+        'Kenohsa/Racine, WI':'https://racine.craigslist.org/',
         'Kansas City, MO':'https://kansascity.craigslist.org/',
         'Saint Louis, MO':'https://stlouis.craigslist.org/',
         'Savannah, GA':'https://savannah.craigslist.org/',
         'Philadelphia, PA':'https://philadelphia.craigslist.org/',
         'Scranton, PA':'https://scranton.craigslist.org/',
         'Erie, PA':'https://erie.craigslist.org/',
+        'Charleston, WV':'https://charlestonwv.craigslist.org/',
+
 
         'Pittsburgh, PA':'https://pittsburgh.craigslist.org/',
         'Fargo, ND':'https://fargo.craigslist.org/',
         'Bismarck, ND':'https://bismarck.craigslist.org/',
+
+
 
         'Mexico City, Mexico': 'https://mexicocity.craigslist.org/',
 
         'Montreal, Quebec, Canada':'https://montreal.craigslist.org/',
         'Ottawa, Canada': 'https://ottawa.craigslist.org/',
         'Tokyo, Japan': 'https://tokyo.craigslist.org/?lang=en&cc=us',
+
         }
     
     # Prompt user for region:
