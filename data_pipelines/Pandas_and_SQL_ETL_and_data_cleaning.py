@@ -88,8 +88,7 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
     Then, import all CSV files to a single Pandas' df using pd.concat(). Only apply filter if the SQL table
     contains at least some data for given region."""
 
-    # recursively search for scraped_data CSV files for given region 
-
+    # recursively search for scraped_data CSV files for given region:
 
     # get path for scraped data pertaining to the given region:
     path = os.path.join(parent_direc, region_code) 
@@ -134,11 +133,9 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
     # print(f"Logic test:\n\n{latest_date_from_query.isnull()}")
 
 
-    # if latest_date_from_query != "None":  # the SQL table contains at least some data for given region
-
-    # if latest_date_from_query['latest_date'].str.contains("None").any():  # the SQL table contains at least some data for given region
-    if latest_date_from_query.isnull() is False:  # the SQL table contains at least some data for given region
-
+    # apply datetime filter *only* if the SQL table contains at least some data for given region
+    # ie: if latest_date_from_query does not comprise the string "None" (which would otherwise indicate no data from the SQL table for given region)
+    if latest_date_from_query != 'None':  # the SQL table contains at least some data for given region
 
         # use latest_date_from_query as the start date of our file date-filter:
         # transform the data to be in a "%M-%d-%Y" format, ton match the file naming structure (ie, the underscores and month, then day, then year format are important to filter the files properly):
@@ -150,7 +147,8 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
 
         # convert %M month format to %m month format
         end_date = datetime.datetime.strptime(str(date_now), "%Y-%m-%d").date().strftime("%m-%d-%Y")
-                
+
+
 
         # sanity check on dates to be used to filter to the daterange
         print(f'Start date for file filter:\n{start_date}')
@@ -184,7 +182,9 @@ def import_all_CSV_since_latest_date_and_concat_to_df(parent_direc:str, region_c
         # concat to a single df:
         df = pd.concat(list_of_dfs, ignore_index=True)
     
-    return df
+    return df    
+
+
 
 
 # 3.) b.) filter Pandas' dataframe by latest date of date_posted found via MAX( SQL query
@@ -194,7 +194,10 @@ def filter_df_since_specified_date(df: DataFrame, latest_date_sql_str: str):
     # only apply the filter if the SQL query indicates at least some data has been stored in the SQL table, for given region
 
     # if latest_date_sql_str != "None": #  a) latest_date_sql_str query result object is not literally "None" 
-    if latest_date_sql_str.isnull() is False: #  a) latest_date_sql_str query result object is not literally "None" 
+    # if latest_date_sql_str.isnull() is False: #  a) latest_date_sql_str query result object is not literally "None" 
+    
+    if latest_date_sql_str != 'None':  # the SQL table contains at least some data for given region
+
 
         # define datetime mask, so we ensure we will be inserting only more recent data than what's already stored in the table
         datetime_mask = (df['date_posted'] > latest_date_sql_str)
@@ -581,6 +584,58 @@ def obtain_cities_from_wiki_sc(webpage_url,list_of_cities):
     return list_of_cities
 
 
+def obtain_cities_from_wiki_maricopa_AZ(webpage_url,list_of_cities):
+    driver = webdriver.Chrome()  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+    
+    webpage_url = 'https://en.wikipedia.org/wiki/Category:Cities_in_Maricopa_County,_Arizona'
+
+    # access webpage
+    driver.get(webpage_url)
+
+    # specify xpath to wiki table containing the city names data:
+    xpaths_table = '//*[@id="mw-subcategories"]/div'
+
+    # specify max number of seconds to wait for given HTML element to load, before specifying TimeoutException
+    download_delay = 20
+
+
+    # wait until the webpage's "searchform" form tag has been loaded, or up to a maximum 20 seconds (ie, given the value of self.download_delay)
+    try: # wait until the form tag with ID of "searchform"--ie, the Craigslist page given our search results--has been loaded, or up to a maximum of 30 seconds (given download_delay)
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, xpaths_table))
+        )  # NB: you need to use a tuple as the argument of the selenium EC.presence_of_element_located() function, hence the double-parantheses
+        print('\nPage has loaded, and we can start scraping the data.\n')
+    except TimeoutException:
+        # Return error message if loading the webpage takes longer than the maximum n seconds
+        print(f"\nLoading the webpage's searchform element timed out: ie, it took longer than the maximum number of {download_delay} seconds.\n")
+
+
+    # having waited for page element to load, grab the wiki data tables from webpage:
+    table = driver.find_element(By.XPATH, xpaths_table)
+
+
+    # iterate over each table row and then row_val within each row to get data from the given table, pertaining to the city names
+    for row in table.find_elements(By.CSS_SELECTOR, 'tr'): # iterate over each row in the table
+        
+        
+        city_names =  row.find_elements(By.TAG_NAME, 'th')  # iterate over value of each row, *but* ONLY for the 1st column--ie, the 0th index
+        # city_names =  row.find_elements(By.TAG_NAME, 'td')[0]  # iterate over value of each row, *but* ONLY for the 1st column--ie, the 0th index
+
+        # extract text, but *skip* the first 2 rows of the table  rows' values since these are only the column names!
+        for city_name in city_names[:2]: # skip first 2 rows 
+
+            # append the remaining data to list
+            list_of_cities.append(city_name.text)
+
+
+    # exit webpage 
+    driver.close()
+
+
+    return list_of_cities
+
+
+
 # # combine both the sfbay city names & sc county names lists into one:
 def combine_lists(list1, list2):
     return list1.extend(list2)
@@ -592,7 +647,7 @@ def add_dash_delimiter_in_bw_each_word_of_city_names(city_names:list):
 # clean city names by matching scraped craigslist data to that of the wikipedia table data:
 def parse_city_names_from_listing_URL(df, unique_city_names_dash_delim:list):
     """ First, check whether a given listing is of the newer variety--since January 
-    2023--and if so, 
+    2023--and if so, perform the following data cleaning steps:
     
     1) Use str.contains() method chained to a .join() method in which we perform an 'OR' boolean via
     the pipe (ie, '|' operator--ie, so we can search for multiple substrings (ie, each element 
@@ -666,6 +721,14 @@ def remove_dashes_from_words_in_col(df, col):
 
 def capitalize_each_word_in_row_for_col(df, col):
     return df[col].str.title()
+
+def return_first_n_rows_for_col(df, col):
+    """In cases of unusually-large city names data (probably not correct anyway),
+    filter the data to be only of 39 characters or less to conform to the rental table constraint for the city column.
+    This function returns the cleaned version of the column"""
+    return [el[:39] for el in df[col]]
+
+
 
 
 
@@ -784,6 +847,7 @@ def remove_col_with_given_starting_name(df, col_starting_name: str):
 
 def main():
     # specify names of metropolitan craigslist region names and their corresponding craigslist urls, store in dict
+
     clist_region_and_urls = {
     'SF Bay Area, CA':'https://sfbay.craigslist.org/',
     'San Diego, CA':'https://sandiego.craigslist.org/',
@@ -858,9 +922,9 @@ def main():
     'Mexico City, Mexico': 'https://mexicocity.craigslist.org/',
     'Montreal, Quebec, Canada':'https://montreal.craigslist.org/',
     'Ottawa, Canada': 'https://ottawa.craigslist.org/',
-    'Tokyo, Japan': 'https://tokyo.craigslist.org/?lang=en&cc=us'
+    'Tokyo, Japan': 'https://tokyo.craigslist.org/?lang=en&cc=us',
+
     } 
-    
 
     # prompt user to select which region for updating the database:
     region_name = prompt_user_to_specify_region_to_update(clist_region_and_urls)
@@ -930,6 +994,23 @@ def main():
     if latest_date.isna().values.any():
         # keep latest_date_dt as assigned to "None" since no data yet exist in the SQL table
         latest_date_dt = latest_date
+
+        # specify name of df (ie, latest_date) containing the query results and datetime col to transform
+        latest_date, dt_col = latest_date, 'latest_date' 
+        # convert query results from df to str
+        latest_date_str = datetime_col_to_str_of_datetime(latest_date, dt_col)
+
+        
+        # sanity check
+        print(f"\n\nThe latest date among the scraped data stored in the SQL table is:\n{latest_date_str}")
+        print(f"Data type of this object is--NB: make sure it's str:\n{type(latest_date_str)}")
+
+        # # specify datetime format of query results
+        # initial_datetime_format =  "%Y-%m-%d %H:%M:%S"
+
+        # convert query results from str to datetime
+        latest_date_dt = latest_date_str
+
         
     # only make adjustments to latest_date object if query returns a non-null value
     else:  
@@ -938,7 +1019,7 @@ def main():
 
         # specify name of df (ie, latest_date) containing the query results and datetime col to transform
         latest_date, dt_col = latest_date, 'latest_date' 
-        # convert query results to str
+        # convert query results from df to str
         latest_date_str = datetime_col_to_str_of_datetime(latest_date, dt_col)
 
         
@@ -1035,66 +1116,110 @@ def main():
     ## Clean city names data
 
     # clean city names data:
-    # NB: run a wikipedia table webcrawler to get a list of all possible SF Bay city names:
+    # NB: run a wikipedia table webcrawler to get a list of all possible city names SF Bay city names:
 
-    # initialize lists:
-    sfbay_city_names = []
+    if region_code == 'sfbay':
+        # initialize lists:
+        sfbay_city_names = []
 
-    # sf bay area city names wiki page:
-    sfbay_cities_wiki_url = 'https://en.wikipedia.org/wiki/List_of_cities_and_towns_in_the_San_Francisco_Bay_Area'
+        # sf bay area city names wiki page:
+        sfbay_cities_wiki_url = 'https://en.wikipedia.org/wiki/List_of_cities_and_towns_in_the_San_Francisco_Bay_Area'
 
 
-    #sfbay data
-    obtain_cities_from_wiki_sfbay(sfbay_cities_wiki_url, sfbay_city_names)
+        #sfbay data
+        obtain_cities_from_wiki_sfbay(sfbay_cities_wiki_url, sfbay_city_names)
+        
+
+        # remove remaining col names:
+        sfbay_city_names = sfbay_city_names[4:]
+
+        # sanity check
+        print(f'sfbay city names:{sfbay_city_names}')
+
+        print(f'There are {len(sfbay_city_names)} city names\nNB: There should be 101.')
+
+        # Sc county city names data:
+        # sc county wiki page url
+        sc_county_cities_wiki_url = 'https://en.wikipedia.org/wiki/Santa_Cruz_County,_California#Population_ranking'
+        # initialize list
+        sc_county_city_names = []
+
+        # Santa Cruz data from wiki
+        obtain_cities_from_wiki_sc(sc_county_cities_wiki_url, sc_county_city_names)
+
+
+        #  # clean data by removing extraneous '†' char from city names lists
+        sc_county_city_names = list(map(lambda x: x.replace('†',''), sc_county_city_names))
+        sfbay_city_names = list(map(lambda x: x.replace('†',''), sfbay_city_names))
+
+
+        ## finally, remove any whitespace from lists-- use list comprehension
+        sc_county_city_names = [s for s in sc_county_city_names if s.strip()]
+        sfbay_city_names = [s for s in sfbay_city_names if s.strip()]
+
+
+        # sanity check
+        print(f'\n\nsc county city names:{sc_county_city_names}')
+        print(f'There are {len(sc_county_city_names)} city names for SC county.')
+
+        combine_lists(sfbay_city_names, sc_county_city_names)
+
+        # sanity check
+        print(f'sanity check on sfbay & sc county city names data:\n\n{sfbay_city_names}')
+
+        print(f'\nThere are {len(sfbay_city_names)} cities')
+
+
+        sfbay_city_names = add_dash_delimiter_in_bw_each_word_of_city_names(sfbay_city_names)
+        
+        # sanity check
+        print(f"List of SF Bay city names parsed from wiki tables:{sfbay_city_names}")
+
+        # parse city names data based on the full list of cities from the wikipedia pages
+        df = parse_city_names_from_listing_URL(df, sfbay_city_names)
+
+
+
+    elif region_code == 'phoenix':
+
+        # initialize lists:
+        AZ_phx_city_names = []
+
+        # sf bay area city names wiki page:
+        AZ_phx_city_names_url = 'https://en.wikipedia.org/wiki/Category:Cities_in_Maricopa_County,_Arizona'
+
+
+        #sfbay data
+        obtain_cities_from_wiki_maricopa_AZ(AZ_phx_city_names_url, AZ_phx_city_names)
+        
+
+        # remove remaining col names:
+        AZ_phx_city_names = AZ_phx_city_names[4:]
+
+        # sanity check
+        print(f'AZ city names:{AZ_phx_city_names}')
+
+        print(f'There are {len(AZ_phx_city_names)} city names\nNB: There should be ?.')
+
+
+        # sanity check
+        print(f'sanity check on AZ city names data:\n\n{AZ_phx_city_names}')
+
+
+        AZ_phx_city_names = add_dash_delimiter_in_bw_each_word_of_city_names(AZ_phx_city_names)
+        
+        # sanity check
+        print(f"List of AZ_phx_city_names city names parsed from wiki tables:{AZ_phx_city_names}")
+
+        # parse city names data based on the full list of cities from the wikipedia pages
+        df = parse_city_names_from_listing_URL(df, AZ_phx_city_names)
     
-
-    # remove remaining col names:
-    sfbay_city_names = sfbay_city_names[4:]
-
-    # sanity check
-    print(f'sfbay city names:{sfbay_city_names}')
-
-    print(f'There are {len(sfbay_city_names)} city names\nNB: There should be 101.')
-
-    # Sc county city names data:
-    # sc county wiki page url
-    sc_county_cities_wiki_url = 'https://en.wikipedia.org/wiki/Santa_Cruz_County,_California#Population_ranking'
-    # initialize list
-    sc_county_city_names = []
-
-    # Santa Cruz data from wiki
-    obtain_cities_from_wiki_sc(sc_county_cities_wiki_url, sc_county_city_names)
+    else:
+        pass
 
 
-    #  # clean data by removing extraneous '†' char from city names lists
-    sc_county_city_names = list(map(lambda x: x.replace('†',''), sc_county_city_names))
-    sfbay_city_names = list(map(lambda x: x.replace('†',''), sfbay_city_names))
-
-
-    ## finally, remove any whitespace from lists-- use list comprehension
-    sc_county_city_names = [s for s in sc_county_city_names if s.strip()]
-    sfbay_city_names = [s for s in sfbay_city_names if s.strip()]
-
-
-    # sanity check
-    print(f'\n\nsc county city names:{sc_county_city_names}')
-    print(f'There are {len(sc_county_city_names)} city names for SC county.')
-
-    combine_lists(sfbay_city_names, sc_county_city_names)
-
-    # sanity check
-    print(f'sanity check on sfbay & sc county city names data:\n\n{sfbay_city_names}')
-
-    print(f'\nThere are {len(sfbay_city_names)} cities')
-
-
-    sfbay_city_names = add_dash_delimiter_in_bw_each_word_of_city_names(sfbay_city_names)
-    
-    # sanity check
-    print(f"List of SF Bay city names parsed from wiki tables:{sfbay_city_names}")
-
-    # parse city names data based on the full list of cities from the wikipedia pages
-    df = parse_city_names_from_listing_URL(df, sfbay_city_names)
+    # # parse city names data based on the full list of cities from the wikipedia pages
+    # df = parse_city_names_from_listing_URL(df, sfbay_city_names)
 
     # clean city names (e.g., delete 'Nan' values, etc.)
     df['cities'] = clean_city_names(df, 'cities')
@@ -1102,9 +1227,11 @@ def main():
     # remove dashes from city names col:
     df['cities'] = remove_dashes_from_words_in_col(df, 'cities')
     
-
+    # capitalize each word for each city name
     df['cities'] = capitalize_each_word_in_row_for_col(df, 'cities')
 
+    # return first 39 rows of city names to ensure the city names conform to the SQL rental table varchar length constraint
+    df['cities'] = return_first_n_rows_for_col(df, 'cities')
 
     # df = clean_split_city_names(df, address_criteria, neighborhood_criteria, split_city_delimiters, incorrect_city_names, cities_not_in_region, cities_that_need_extra_cleaning)
     # sanity check
@@ -1209,11 +1336,12 @@ def main():
     ## 5.) Pandas df to SQL data pipeline--ie, INSERT the filtered data (*ie, unique data that has not been inserted yet) 
 
     df = deduplicate_df(df)
+
+    # sanity check on data by exporting alleged cleaned data to CSV
+    df.to_csv(f'slc_cleaned_data{str(datetime.datetime.now())[0:10]}.csv')
     
     #  Execute data pipeline--Ingest data from date-filtered pandas' dataframe to SQL server--data pipeline: 
     SQL_db.insert_df_to_SQL_ETL(df, region_code)
-
-
 
 
 if __name__=="__main__":
