@@ -58,7 +58,7 @@ class Craigslist_Rentals(object):
         # account for regions with *no* subregion:
         else:        
             ## Create customized URL for  specify each of the above parameters --using an f-string--to enable us to make a customized search of SF Bay Area rental listings on Craigslist
-            self.url = f"https://{region}.craigslist.org/search/{housing_category}?/min_price={min_price}&max_price={max_price}&availabilityMode=0&rent_period={rent_period}&sale_date={sale_date}"
+            self.url = f"https://{region}.craigslist.org/search/{housing_category}?/min_price={min_price}&max_price={max_price}&availabilityMode=0&rent_period={rent_period}&sale_date={sale_date}" # do not include subregion in URL since region does not have a subregion
 
             
         # sanity check and print the starting craigslist URL for the web crawler (ie, the self.url derived from this __init__() method):
@@ -454,8 +454,23 @@ class Craigslist_Rentals(object):
         """Create directory (if it doesn't exist) to contain the scraped data, with separate directories for specific regions and subregions."""
         # use f-strings to add in backslahes as directory separators
         backslashes_separator = "\\"
-        # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
-        new_path = f"{scraped_data_folder}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
+
+        # account for regions that do *not* have subregions by checking whether the value for subregion is None,
+        
+        # when subregion exists, then include it as part of the (potentially new) path
+
+        # if self.subregion == 'None':
+        if self.subregion: # ie, subregion is not None
+            # add region and sub-region names as separate child directories (with the backslashes in between to explicitly separate these as separate parent-child directories)
+            new_path = f"{scraped_data_folder}{backslashes_separator}{self.region}{backslashes_separator}{self.subregion}"
+
+        # regions with no subregions
+        else:
+
+            # use region for specifying the path name, but omit any reference to the subregion for regions that do not have any subregions
+            new_path = f"{scraped_data_folder}{backslashes_separator}{self.region}"
+
+
         path_for_csv = os.path.join(parent_direc, new_path)  # specify full path--including the new path we will create (if path does not yet exist)
 
         scraped_data_path = Path(path_for_csv)
@@ -470,7 +485,7 @@ class Craigslist_Rentals(object):
         return scraped_data_path
 
 
-    # export CSV given directory that exists or has been crated via the mk_direc_for_scraped_data() method:
+    # export CSV given directory that exists or has been created via the mk_direc_for_scraped_data() method:
     def export_to_csv(self, df: DataFrame, scraped_data_path: str) -> csv:
         """Save df as CSV in the new path, sans index. Given the mk_direc_for_scraped_data() function,
         we will save the CSV file inside the region and subregion subdirectories.
@@ -484,9 +499,23 @@ class Craigslist_Rentals(object):
         underscore_separator = '_'
         # specify CSV file suffix
         csv_suffix = '.csv'
-        # add region and subregion names to CSV file, and add .csv extension:
-        csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{csv_suffix}" # append today's date and .csv extension to the file name
         # export dataframe to CSV. NB: concatenate CSV file name to the path by using os.path.join(). Also, do not export index since it does not contain pertinent data:
+        
+        # regions with subregions
+        if self.subregion: # ie, subregion is not None
+            csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{self.subregion}{underscore_separator}{today_dt_str}{csv_suffix}" # append today's date and .csv extension to the file name
+            
+            return df.to_csv(os.path.join(scraped_data_path, csv_file_name), index=False)
+
+
+        #  regions with *no* subregions
+        else:
+            # do not use subregion in the CSV file name
+            csv_file_name = f"{csv_preface_name}{underscore_separator}{self.region}{underscore_separator}{today_dt_str}{csv_suffix}" # append today's date and .csv extension to the file name
+        
+            return df.to_csv(os.path.join(scraped_data_path, csv_file_name), index=False)
+
+        
         return df.to_csv(os.path.join(scraped_data_path, csv_file_name), index=False)
 
 
