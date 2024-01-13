@@ -44,10 +44,15 @@ def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->li
     options.add_argument("disable-infobars") # disable browser infobars
 
     # install and/or update to latest Chrome Webdriver, and implement the options specified above:
+    # web_driver  = webdriver.Chrome(
+    #     ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+    #     options=options  # implement the various options specified above
+    #     )
     web_driver  = webdriver.Chrome(
-        ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library
+        # ChromeDriverManager().install(),  # install or update latest Chrome webdriver using using ChromeDriverManager() library
         options=options  # implement the various options specified above
         )
+
 
     # access craigslist homepage for given region:
     web_driver.get(craigslist_url_homepage) # do get request to access the homepage of the given craiglist region
@@ -71,7 +76,8 @@ def parse_subregions_via_xpath(craigslist_url_homepage: str, xpath_arg: str)->li
     craigslist_subregions = []  
 
     # b.) scrape the HTML element, extract text, and append to given list
-    for scraped_html in web_driver.find_elements_by_xpath(xpath_arg):
+    # for scraped_html in web_driver.find_elements_by_xpath(xpath_arg):
+    for scraped_html in web_driver.find_elements("xpath", xpath_arg):
         craigslist_subregions.append(scraped_html.text)  # parse text data from scraped html element
 
     
@@ -205,8 +211,8 @@ def main():
         # run parse_subregions_via_xpath() function to parse craigslist subregion codes
 
         # specify xpath argument needed to parse the clist subregion codes for a given (parent) region 
-        ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
-
+        ul_subregions_xpath = '//[@class="sublinks"]/li/a'
+        
         # run parse_subregions_via_xpath() to parse subregion codes into a list, given the following args: region URLs list (ie, clist_region_urls), an empty list to be populated, and an xpath arg
         subregions_list = parse_subregions_via_xpath(region_URL, ul_subregions_xpath)
 
