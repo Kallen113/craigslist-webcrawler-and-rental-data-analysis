@@ -338,5 +338,7 @@ c) As a result, some of these unit tests should print a special message if the t
 
 4.) Consider creating screenshots or a video of running the webcrawler in action, for sake of illustration.
 
+5.) Consider creating a hierarchical list for the region selection drop-downs that are used to prompt the user to select a region for the webcrawler to search. More specifically, have the user select which country, then state or province (if relevant), and finally which region.
+
 ### Legal Info & Disclaimer:
 The use of this webcrawler is intended to be for personal & educational purposes only. Any commercial uses or purposes associated with the use of this repo's scripts and program are prohibited. No personal data or GIS locations of the rental listings are collected via this webcrawler program, and I do not claim any copyright ownership over any of the data from craigslist or its subsidiaries.  
