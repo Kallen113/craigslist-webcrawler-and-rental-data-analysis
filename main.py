@@ -144,7 +144,7 @@ def main():
         # run parse_subregions_via_xpath() function to parse craigslist subregion codes
 
         # specify xpath argument needed to parse the clist subregion codes for a given (parent) region 
-        ul_subregions_xpath = '//*[@id="topban"]/div[1]/ul'
+        ul_subregions_xpath = '//ul[@class="sublinks"]/li/a'
 
         # run parse_subregions_via_xpath() to parse subregion codes into a list, given the following args: region URLs list (ie, clist_region_urls), an empty list to be populated, and an xpath arg
         subregions_list = parse_subregions_via_xpath(region_URL, ul_subregions_xpath)
