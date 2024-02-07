@@ -63,6 +63,7 @@ def main():
         'Salem, OR': 'https://salem.craigslist.org/',
         'Bend, OR': 'bend.craigslist.org',
         'Eugene, OR':'https://eugene.craigslist.org/',
+        'Wenatchee, WA': 'https://wenatchee.craigslist.org/',
         'San Luis Obispo, CA': 'https://slo.craigslist.org/',
         'Orange County, CA': 'https://orangecounty.craigslist.org/',
         'Bakersfield, CA': 'https://bakersfield.craigslist.org/',
