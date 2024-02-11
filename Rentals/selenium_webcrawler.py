@@ -159,9 +159,6 @@ class Craigslist_Rentals(object):
             # specify amount of time to wait for element before timing out
             wait = WebDriverWait(self.web_driver,self.download_delay)
 
-            print(f'Amt of time to wait:{wait}\n')
-
-
 
             ## Check that there are no duplicate urls in listing_urls (ie, url hrefs for the inner rental listings pages):
             if len(listing_urls) == len(set(listing_urls)):  # check that there are no duplicate urls in urls list (ie, url hrefs for the rental listings pages)
