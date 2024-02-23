@@ -67,6 +67,7 @@ def main():
         'San Luis Obispo, CA': 'https://slo.craigslist.org/',
         'Orange County, CA': 'https://orangecounty.craigslist.org/',
         'Bakersfield, CA': 'https://bakersfield.craigslist.org/',
+        'Inland Empire, CA': 'https://inlandempire.craigslist.org/',
         'Bloomington, IL': 'https://bloomington.craigslist.org/',
         'Western MAssachusetts':'https://westernmass.craigslist.org/',
         'Buffalo, NY':'https://buffalo.craigslist.org/',
