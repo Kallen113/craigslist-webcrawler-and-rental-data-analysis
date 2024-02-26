@@ -87,6 +87,7 @@ def main():
         'Orlando, FL':'https://orlando.craigslist.org/',
         'Twin Falls, ID':'https://twinfalls.craigslist.org/',
         'Boise, ID':'https://boise.craigslist.org/',
+        'La Crosse, WI':'https://lacrosse.craigslist.org/',
         'Madison, WI':'https://madison.craigslist.org/',
         'Milwaukee, WI':'https://milwaukee.craigslist.org/',
         'Kenohsa/Racine, WI':'https://racine.craigslist.org/',
